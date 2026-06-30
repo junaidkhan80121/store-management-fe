@@ -8,6 +8,7 @@ import {
 import { Plus, Search, X } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
+import { useAppToast } from '../hooks/useAppToast';
 
 export default function GrowerGroups() {
   const [groups, setGroups] = useState<any[]>([]);
@@ -22,6 +23,7 @@ export default function GrowerGroups() {
   const [sortField, setSortField] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const token = useSelector((state: RootState) => state.auth.token);
+  const { showToast, Toast } = useAppToast();
 
   const fetchGroups = async () => {
     if (!token) return;
@@ -77,11 +79,14 @@ export default function GrowerGroups() {
         setOpen(false);
         setNewGroup({ name: '', description: '' });
         fetchGroups();
+        showToast('Grower group created successfully');
       } else {
-        alert("Failed to add group (name might exist)");
+        const err = await response.json().catch(() => ({}));
+        showToast(err.detail || 'Failed to add group (name might already exist)', 'error');
       }
     } catch (error) {
       console.error(error);
+      showToast('Failed to add grower group', 'error');
     }
   };
 
@@ -238,6 +243,7 @@ export default function GrowerGroups() {
           <Button onClick={handleAddGroup} variant="contained" disabled={!newGroup.name}>Create Group</Button>
         </DialogActions>
       </Dialog>
+      <Toast />
     </Box>
   );
 }

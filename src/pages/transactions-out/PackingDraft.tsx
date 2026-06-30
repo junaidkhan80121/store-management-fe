@@ -20,6 +20,7 @@ export default function PackingDraft() {
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [packingType, setPackingType] = useState('');
   const [packingNotes, setPackingNotes] = useState('');
+  const [unitPrice, setUnitPrice] = useState<number | ''>('');
 
   const token = useSelector((state: RootState) => state.auth.token);
   const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -57,6 +58,7 @@ export default function PackingDraft() {
         body: JSON.stringify({
           packing_type: packingType || null,
           packing_notes: packingNotes || null,
+          unit_price_per_kg: unitPrice !== '' ? Number(unitPrice) : null,
         }),
       });
       if (!res.ok) throw new Error('Failed to create packing draft');
@@ -64,6 +66,7 @@ export default function PackingDraft() {
       setDraftDialog(null);
       setPackingType('');
       setPackingNotes('');
+      setUnitPrice('');
       fetchTransactions();
     } catch (err: any) {
       setAlert({ type: 'error', message: err.message });
@@ -193,6 +196,14 @@ export default function PackingDraft() {
                 <MenuItem value="Bulk Pack">Bulk Pack</MenuItem>
                 <MenuItem value="Custom">Custom</MenuItem>
               </TextField>
+              <TextField
+                fullWidth
+                type="number"
+                label="Unit Price per kg"
+                value={unitPrice}
+                onChange={(e) => setUnitPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                helperText={unitPrice !== '' && draftDialog ? `Valuation: ${(Number(unitPrice) * (draftDialog.weight_out_kg || 0)).toFixed(2)}` : ''}
+              />
               <TextField
                 fullWidth
                 multiline

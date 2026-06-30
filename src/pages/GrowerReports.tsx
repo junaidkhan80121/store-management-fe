@@ -15,6 +15,7 @@ export default function GrowerReports() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [lifecycleStatus, setLifecycleStatus] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(0);
@@ -34,6 +35,7 @@ export default function GrowerReports() {
       });
       if (searchQuery) params.append('search', searchQuery);
       if (selectedGroupId) params.append('group_id', selectedGroupId);
+      if (lifecycleStatus) params.append('lifecycle_status', lifecycleStatus);
       if (startDate) params.append('start_date', startDate);
       if (endDate) params.append('end_date', endDate);
 
@@ -69,7 +71,7 @@ export default function GrowerReports() {
 
   useEffect(() => { fetchReports(); }, [token, page, rowsPerPage]);
   useEffect(() => { fetchGroups(); }, [token]);
-  useEffect(() => { setPage(0); fetchReports(); }, [searchQuery, selectedGroupId, startDate, endDate]);
+  useEffect(() => { setPage(0); fetchReports(); }, [searchQuery, selectedGroupId, lifecycleStatus, startDate, endDate]);
 
   const statCards = [
     { label: 'Total Growers', value: summary?.total_growers ?? '—', icon: <Users size={24} color="#00A76F" />, bg: 'rgba(0, 167, 111, 0.16)' },
@@ -129,19 +131,30 @@ export default function GrowerReports() {
                   {groups.map((g: any) => <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>)}
                 </Select>
               </FormControl>
+              <FormControl size="small" sx={{ minWidth: 160 }}>
+                <InputLabel>Lifecycle</InputLabel>
+                <Select value={lifecycleStatus} label="Lifecycle" onChange={(e) => setLifecycleStatus(e.target.value)}>
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="ACTIVE">Active</MenuItem>
+                  <MenuItem value="INACTIVE">Inactive</MenuItem>
+                  <MenuItem value="SUSPENDED">Suspended</MenuItem>
+                  <MenuItem value="PENDING">Pending</MenuItem>
+                </Select>
+              </FormControl>
               <TextField size="small" label="From" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                 slotProps={{ inputLabel: { shrink: true } }} />
               <TextField size="small" label="To" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
                 slotProps={{ inputLabel: { shrink: true } }} />
             </Box>
-            {(searchQuery || selectedGroupId || startDate || endDate) && (
+            {(searchQuery || selectedGroupId || lifecycleStatus || startDate || endDate) && (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>Active Filters:</Typography>
                 {searchQuery && <Chip size="small" label={`Search: ${searchQuery}`} onDelete={() => setSearchQuery('')} />}
                 {selectedGroupId && <Chip size="small" label={`Group filter`} onDelete={() => setSelectedGroupId('')} />}
                 {startDate && <Chip size="small" label={`From: ${startDate}`} onDelete={() => setStartDate('')} />}
                 {endDate && <Chip size="small" label={`To: ${endDate}`} onDelete={() => setEndDate('')} />}
-                <Button size="small" color="error" onClick={() => { setSearchQuery(''); setSelectedGroupId(''); setStartDate(''); setEndDate(''); }}>Clear All</Button>
+                {lifecycleStatus && <Chip size="small" label={`Lifecycle: ${lifecycleStatus}`} onDelete={() => setLifecycleStatus('')} />}
+                <Button size="small" color="error" onClick={() => { setSearchQuery(''); setSelectedGroupId(''); setLifecycleStatus(''); setStartDate(''); setEndDate(''); }}>Clear All</Button>
               </Box>
             )}
           </Stack>
@@ -159,6 +172,7 @@ export default function GrowerReports() {
                     <TableRow>
                       <TableCell>Grower</TableCell>
                       <TableCell>Group</TableCell>
+                      <TableCell>Lifecycle</TableCell>
                       <TableCell>Contact</TableCell>
                       <TableCell align="right">Transactions</TableCell>
                       <TableCell align="right">Total Crates</TableCell>
@@ -174,6 +188,7 @@ export default function GrowerReports() {
                           <Typography variant="body2" color="text.secondary">ID: {row.id}</Typography>
                         </TableCell>
                         <TableCell>{row.group_name || '—'}</TableCell>
+                        <TableCell><Chip label={row.lifecycle_status || 'ACTIVE'} size="small" /></TableCell>
                         <TableCell>{row.contact_number || '—'}</TableCell>
                         <TableCell align="right">
                           <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600 }}>{row.total_transactions}</Typography>
@@ -201,7 +216,7 @@ export default function GrowerReports() {
                     ))}
                     {data.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                        <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                           <Users size={40} color="#919EAB" />
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>No grower data found</Typography>
                         </TableCell>

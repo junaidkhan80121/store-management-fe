@@ -5,17 +5,21 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   MenuItem, Select, FormControl, InputLabel, Chip, InputAdornment, Stack, TablePagination, TableSortLabel
 } from '@mui/material';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus, Search, Trash2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
+import { useAppToast } from '../hooks/useAppToast';
 
 export default function Growers() {
   const [growers, setGrowers] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [newGrower, setNewGrower] = useState({ name: '', contact_number: '', email: '', address: '', group_id: '' });
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [newGrower, setNewGrower] = useState({ name: '', contact_number: '', email: '', address: '', group_id: '', lifecycle_status: 'ACTIVE' });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [lifecycleStatus, setLifecycleStatus] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(0);
@@ -24,6 +28,7 @@ export default function Growers() {
   const [sortField, setSortField] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const token = useSelector((state: RootState) => state.auth.token);
+  const { showToast, Toast } = useAppToast();
 
   const fetchGrowers = async () => {
     if (!token) return;
@@ -36,6 +41,7 @@ export default function Growers() {
       });
       if (searchQuery) params.append('search', searchQuery);
       if (selectedGroupId) params.append('group_id', selectedGroupId);
+      if (lifecycleStatus) params.append('lifecycle_status', lifecycleStatus);
       if (startDate) params.append('start_date', startDate);
       if (endDate) params.append('end_date', endDate);
 
@@ -83,7 +89,7 @@ export default function Growers() {
 
   useEffect(() => {
     if (token) handleFilterChange();
-  }, [searchQuery, selectedGroupId, startDate, endDate]);
+  }, [searchQuery, selectedGroupId, lifecycleStatus, startDate, endDate]);
 
   const handleAddGrower = async () => {
     try {
@@ -102,13 +108,16 @@ export default function Growers() {
       });
       if (response.ok) {
         setOpen(false);
-        setNewGrower({ name: '', contact_number: '', email: '', address: '', group_id: '' });
+        setNewGrower({ name: '', contact_number: '', email: '', address: '', group_id: '', lifecycle_status: 'ACTIVE' });
         fetchGrowers();
+        showToast('Grower created successfully');
       } else {
-        alert("Failed to add grower");
+        const err = await response.json().catch(() => ({}));
+        showToast(err.detail || 'Failed to add grower', 'error');
       }
     } catch (error) {
       console.error(error);
+      showToast('Failed to add grower', 'error');
     }
   };
 
@@ -122,6 +131,28 @@ export default function Growers() {
     const isAsc = sortField === property && sortOrder === 'asc';
     setSortOrder(isAsc ? 'desc' : 'asc');
     setSortField(property);
+  };
+
+  const handleDeleteGrower = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/growers/${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to delete grower');
+      }
+      setDeleteTarget(null);
+      fetchGrowers();
+      showToast(`Grower "${deleteTarget.name}" deleted`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to delete grower', 'error');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -155,6 +186,16 @@ export default function Growers() {
                 {groups.map(g => <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>)}
               </Select>
             </FormControl>
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel>Lifecycle</InputLabel>
+              <Select value={lifecycleStatus} label="Lifecycle" onChange={(e) => setLifecycleStatus(e.target.value)}>
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="ACTIVE">Active</MenuItem>
+                <MenuItem value="INACTIVE">Inactive</MenuItem>
+                <MenuItem value="SUSPENDED">Suspended</MenuItem>
+                <MenuItem value="PENDING">Pending</MenuItem>
+              </Select>
+            </FormControl>
             <TextField
               size="small"
               label="Start Date"
@@ -173,15 +214,16 @@ export default function Growers() {
             />
           </Box>
           
-          {(searchQuery || selectedGroupId || startDate || endDate) && (
+          {(searchQuery || selectedGroupId || lifecycleStatus || startDate || endDate) && (
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
               <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>Active Filters:</Typography>
               {searchQuery && <Chip size="small" label={`Search: ${searchQuery}`} onDelete={() => setSearchQuery('')} />}
+              {lifecycleStatus && <Chip size="small" label={`Status: ${lifecycleStatus}`} onDelete={() => setLifecycleStatus('')} />}
               {selectedGroupId && <Chip size="small" label={`Group: ${getGroupName(parseInt(selectedGroupId))}`} onDelete={() => setSelectedGroupId('')} />}
               {startDate && <Chip size="small" label={`From: ${startDate}`} onDelete={() => setStartDate('')} />}
               {endDate && <Chip size="small" label={`To: ${endDate}`} onDelete={() => setEndDate('')} />}
               <Button size="small" color="error" onClick={() => {
-                setSearchQuery(''); setSelectedGroupId(''); setStartDate(''); setEndDate('');
+                setSearchQuery(''); setSelectedGroupId(''); setLifecycleStatus(''); setStartDate(''); setEndDate('');
               }}>Clear All</Button>
             </Box>
           )}
@@ -205,7 +247,9 @@ export default function Growers() {
                 </TableCell>
                 <TableCell>Contact</TableCell>
                 <TableCell>Email</TableCell>
+                <TableCell>Lifecycle</TableCell>
                 <TableCell>Address</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -218,12 +262,27 @@ export default function Growers() {
                   <TableCell>{getGroupName(grower.group_id)}</TableCell>
                   <TableCell>{grower.contact_number || '-'}</TableCell>
                   <TableCell>{grower.email || '-'}</TableCell>
+                  <TableCell>
+                    <Chip label={grower.lifecycle_status || 'ACTIVE'} size="small"
+                      color={grower.lifecycle_status === 'ACTIVE' ? 'success' : grower.lifecycle_status === 'SUSPENDED' ? 'error' : 'default'} />
+                  </TableCell>
                   <TableCell>{grower.address || '-'}</TableCell>
+                  <TableCell align="right">
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      startIcon={<Trash2 size={14} />}
+                      onClick={() => setDeleteTarget({ id: grower.id, name: grower.name })}
+                    >
+                      Delete
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
               {growers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                     <Typography variant="body2" color="text.secondary">
                       {totalCount === 0 && !searchQuery && !selectedGroupId && !startDate && !endDate ? 'No growers found.' : 'No growers match your filters.'}
                     </Typography>
@@ -274,6 +333,16 @@ export default function Growers() {
               ))}
             </Select>
           </FormControl>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Lifecycle Status</InputLabel>
+            <Select value={newGrower.lifecycle_status} label="Lifecycle Status"
+              onChange={(e) => setNewGrower({...newGrower, lifecycle_status: e.target.value})}>
+              <MenuItem value="ACTIVE">Active</MenuItem>
+              <MenuItem value="INACTIVE">Inactive</MenuItem>
+              <MenuItem value="SUSPENDED">Suspended</MenuItem>
+              <MenuItem value="PENDING">Pending</MenuItem>
+            </Select>
+          </FormControl>
           <TextField
             margin="dense"
             label="Contact Number"
@@ -310,6 +379,26 @@ export default function Growers() {
           <Button onClick={handleAddGrower} variant="contained" disabled={!newGrower.name}>Create Grower</Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog open={!!deleteTarget} onClose={() => !deleting && setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Grower</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This cannot be undone.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Growers linked to inbound transactions may fail to delete until those records are removed.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={() => setDeleteTarget(null)} color="inherit" disabled={deleting}>Cancel</Button>
+          <Button onClick={handleDeleteGrower} variant="contained" color="error" disabled={deleting}>
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Toast />
     </Box>
   );
 }

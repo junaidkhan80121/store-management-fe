@@ -3,12 +3,14 @@ import {
   Typography, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, LinearProgress, Box, Chip,
   Stack, Button, InputAdornment, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  Menu, MenuItem, Snackbar, Alert, FormControl, InputLabel, Select, TablePagination, TableSortLabel
+  Menu, MenuItem, FormControl, InputLabel, Select, TablePagination, TableSortLabel
 } from '@mui/material';
 import { Search, Plus, Edit2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
 import ChamberVisualizer from '../components/ChamberVisualizer';
+import FloorPlanView from '../components/FloorPlanView';
+import { useAppToast } from '../hooks/useAppToast';
 
 export default function Capacity() {
   const [chambers, setChambers] = useState<any[]>([]);
@@ -16,7 +18,7 @@ export default function Capacity() {
   const [editOpen, setEditOpen] = useState(false);
   const [editingChamber, setEditingChamber] = useState<any>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | number | null>(null);
-  const [newChamber, setNewChamber] = useState({ name: '', total_capacity: '', status: 'Active', capacity_type: 'Weight (kg)' });
+  const [newChamber, setNewChamber] = useState({ name: '', total_capacity: '', status: 'Active', capacity_type: 'Weight (kg)', temperature_c: '-2', zone: '', row_count: '10', column_count: '10', level_count: '3' });
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [startDate, setStartDate] = useState('');
@@ -26,9 +28,9 @@ export default function Capacity() {
   const [totalCount, setTotalCount] = useState(0);
   const [sortField, setSortField] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   
   const token = useSelector((state: RootState) => state.auth.token);
+  const { showToast, Toast } = useAppToast();
 
   const fetchChambers = async () => {
     if (!token) return;
@@ -87,17 +89,22 @@ export default function Capacity() {
           total_capacity: parseInt(newChamber.total_capacity) || 0,
           used_capacity: 0,
           status: newChamber.status,
-          capacity_type: newChamber.capacity_type
+          capacity_type: newChamber.capacity_type,
+          temperature_c: parseFloat(newChamber.temperature_c) || -2,
+          zone: newChamber.zone || null,
+          row_count: parseInt(newChamber.row_count) || 10,
+          column_count: parseInt(newChamber.column_count) || 10,
+          level_count: parseInt(newChamber.level_count) || 3,
         })
       });
       if (!response.ok) throw new Error('Failed to create chamber');
       setOpen(false);
-      setNewChamber({ name: '', total_capacity: '', status: 'Active', capacity_type: 'Weight (kg)' });
-      setToast({ open: true, message: 'Chamber created successfully', severity: 'success' });
+      setNewChamber({ name: '', total_capacity: '', status: 'Active', capacity_type: 'Weight (kg)', temperature_c: '-2', zone: '', row_count: '10', column_count: '10', level_count: '3' });
+      showToast('Chamber created successfully');
       fetchChambers();
     } catch (error) {
       console.error(error);
-      setToast({ open: true, message: 'Failed to create chamber', severity: 'error' });
+      showToast('Failed to create chamber', 'error');
     }
   };
 
@@ -117,11 +124,11 @@ export default function Capacity() {
       if (!response.ok) throw new Error('Failed to update chamber');
       setEditOpen(false);
       setEditingChamber(null);
-      setToast({ open: true, message: 'Chamber updated successfully', severity: 'success' });
+      showToast('Chamber updated successfully');
       fetchChambers();
     } catch (error) {
       console.error(error);
-      setToast({ open: true, message: 'Failed to update chamber', severity: 'error' });
+      showToast('Failed to update chamber', 'error');
     }
   };
 
@@ -139,11 +146,11 @@ export default function Capacity() {
       setDeleteConfirmId(null);
       setEditOpen(false);
       setEditingChamber(null);
-      setToast({ open: true, message: 'Chamber deleted successfully', severity: 'success' });
+      showToast('Chamber deleted successfully');
       fetchChambers();
     } catch (error) {
       console.error(error);
-      setToast({ open: true, message: 'Failed to delete chamber', severity: 'error' });
+      showToast('Failed to delete chamber', 'error');
     }
   };
 
@@ -161,6 +168,8 @@ export default function Capacity() {
         </Typography>
         <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => setOpen(true)}>New Chamber</Button>
       </Box>
+
+      <FloorPlanView />
       
       <Paper sx={{ mb: 3, p: 2, elevation: 0 }}>
         <Stack spacing={2}>
@@ -369,7 +378,15 @@ export default function Capacity() {
               value={newChamber.status}
               onChange={e => setNewChamber({...newChamber, status: e.target.value})}
               helperText="Active, Warning, or Maintenance"
+              sx={{ mb: 2 }}
             />
+            <TextField label="Zone" fullWidth value={newChamber.zone} onChange={e => setNewChamber({...newChamber, zone: e.target.value})} sx={{ mb: 2 }} />
+            <TextField label="Target Temperature (°C)" type="number" fullWidth value={newChamber.temperature_c} onChange={e => setNewChamber({...newChamber, temperature_c: e.target.value})} sx={{ mb: 2 }} />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField label="Rows" type="number" fullWidth value={newChamber.row_count} onChange={e => setNewChamber({...newChamber, row_count: e.target.value})} />
+              <TextField label="Columns" type="number" fullWidth value={newChamber.column_count} onChange={e => setNewChamber({...newChamber, column_count: e.target.value})} />
+              <TextField label="Levels" type="number" fullWidth value={newChamber.level_count} onChange={e => setNewChamber({...newChamber, level_count: e.target.value})} />
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -447,11 +464,7 @@ export default function Capacity() {
           <Button onClick={handleDelete} variant="contained" color="error">Delete</Button>
         </DialogActions>
       </Dialog>
-      <Snackbar open={toast.open} autoHideDuration={6000} onClose={() => setToast({ ...toast, open: false })}>
-        <Alert onClose={() => setToast({ ...toast, open: false })} severity={toast.severity} sx={{ width: '100%' }}>
-          {toast.message}
-        </Alert>
-      </Snackbar>
+      <Toast />
     </Box>
   );
 }

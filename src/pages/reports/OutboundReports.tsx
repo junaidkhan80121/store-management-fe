@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TextField, CircularProgress, Chip, InputAdornment,
-  Stack, TablePagination, Grid, Fade, FormControl, InputLabel, Select, MenuItem, Button
+  Stack, TablePagination, Grid, Fade, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab
 } from '@mui/material';
 import { ArrowUpFromLine, Search, Package, TrendingUp, CheckCircle2, Activity, Truck } from 'lucide-react';
 import { useSelector } from 'react-redux';
@@ -23,6 +23,7 @@ export default function OutboundReports() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [status, setStatus] = useState('');
+  const [reportType, setReportType] = useState('ledger');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(0);
@@ -39,6 +40,7 @@ export default function OutboundReports() {
         limit: rowsPerPage.toString(),
         sort_by: 'created_at',
         sort_order: 'desc',
+        report_type: reportType,
       });
       if (searchQuery) params.append('search', searchQuery);
       if (status) params.append('status', status);
@@ -62,13 +64,21 @@ export default function OutboundReports() {
   };
 
   useEffect(() => { fetchReports(); }, [token, page, rowsPerPage]);
-  useEffect(() => { setPage(0); fetchReports(); }, [searchQuery, status, startDate, endDate]);
+  useEffect(() => { setPage(0); fetchReports(); }, [searchQuery, status, reportType, startDate, endDate]);
+
+  const reportTabs = [
+    { value: 'ledger', label: 'Settlement Ledger' },
+    { value: 'valuation', label: 'Stock Valuation' },
+    { value: 'packing-draft', label: 'Packing Draft Ledgers' },
+    { value: 'packing-inventory', label: 'Live Packing Inventory' },
+    { value: 'manifest', label: 'Shipping Manifests' },
+  ];
 
   const statCards = [
     { label: 'Total Outbound', value: summary?.all_total ?? '—', icon: <ArrowUpFromLine size={24} color="#00A76F" />, bg: 'rgba(0, 167, 111, 0.16)' },
     { label: 'Total Crates Out', value: summary?.total_crates ?? '—', icon: <Package size={24} color="#00B8D9" />, bg: 'rgba(0, 184, 217, 0.16)' },
     { label: 'Total Weight (kg)', value: summary?.total_weight_kg ?? '—', icon: <TrendingUp size={24} color="#FFAB00" />, bg: 'rgba(255, 171, 0, 0.16)' },
-    { label: 'Completed', value: summary?.status_counts?.FINAL_OUTWARD ?? '—', icon: <CheckCircle2 size={24} color="#22C55E" />, bg: 'rgba(34, 197, 94, 0.16)' },
+    { label: 'Total Valuation', value: summary?.total_valuation ?? '—', icon: <CheckCircle2 size={24} color="#22C55E" />, bg: 'rgba(34, 197, 94, 0.16)' },
   ];
 
   return (
@@ -83,6 +93,12 @@ export default function OutboundReports() {
             <Typography variant="body2" color="text.secondary">Transaction out reports with pipeline status tracking</Typography>
           </Box>
         </Box>
+
+        <Paper sx={{ mb: 3 }}>
+          <Tabs value={reportType} onChange={(_, v) => setReportType(v)} variant="scrollable">
+            {reportTabs.map((t) => <Tab key={t.value} value={t.value} label={t.label} />)}
+          </Tabs>
+        </Paper>
 
         {/* Summary Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -168,6 +184,10 @@ export default function OutboundReports() {
                       <TableCell align="right">Weight (kg)</TableCell>
                       <TableCell>Vehicle</TableCell>
                       <TableCell>Packing</TableCell>
+                      {(reportType === 'valuation' || reportType === 'packing-draft') && (
+                        <TableCell align="right">Valuation</TableCell>
+                      )}
+                      {reportType === 'manifest' && <TableCell>Confirmed</TableCell>}
                       <TableCell>Status</TableCell>
                       <TableCell>Date</TableCell>
                     </TableRow>
@@ -187,6 +207,12 @@ export default function OutboundReports() {
                         </TableCell>
                         <TableCell>{row.dispatch_vehicle || '—'}</TableCell>
                         <TableCell>{row.packing_type || '—'}</TableCell>
+                        {(reportType === 'valuation' || reportType === 'packing-draft') && (
+                          <TableCell align="right">{row.stock_valuation ?? '—'}</TableCell>
+                        )}
+                        {reportType === 'manifest' && (
+                          <TableCell>{row.outward_confirmed_at ? new Date(row.outward_confirmed_at).toLocaleString() : '—'}</TableCell>
+                        )}
                         <TableCell>
                           <Chip
                             label={row.status.replace(/_/g, ' ')}

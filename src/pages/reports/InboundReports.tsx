@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TextField, CircularProgress, Chip, InputAdornment,
-  Stack, TablePagination, Grid, Fade, FormControl, InputLabel, Select, MenuItem, Button
+  Stack, TablePagination, Grid, Fade, FormControl, InputLabel, Select, MenuItem, Button, Tabs, Tab
 } from '@mui/material';
 import { ArrowDownToLine, Search, Package, TrendingUp, CheckCircle2, Activity } from 'lucide-react';
 import { useSelector } from 'react-redux';
@@ -21,6 +21,7 @@ export default function InboundReports() {
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
+  const [reportType, setReportType] = useState('ledger');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(0);
@@ -37,6 +38,7 @@ export default function InboundReports() {
         limit: rowsPerPage.toString(),
         sort_by: 'created_at',
         sort_order: 'desc',
+        report_type: reportType,
       });
       if (status) params.append('status', status);
       if (startDate) params.append('start_date', startDate);
@@ -59,13 +61,20 @@ export default function InboundReports() {
   };
 
   useEffect(() => { fetchReports(); }, [token, page, rowsPerPage]);
-  useEffect(() => { setPage(0); fetchReports(); }, [status, startDate, endDate]);
+  useEffect(() => { setPage(0); fetchReports(); }, [status, reportType, startDate, endDate]);
 
   const statCards = [
     { label: 'Total Inbound', value: summary?.all_total ?? '—', icon: <ArrowDownToLine size={24} color="#00A76F" />, bg: 'rgba(0, 167, 111, 0.16)' },
     { label: 'Total Crates', value: summary?.total_crates ?? '—', icon: <Package size={24} color="#00B8D9" />, bg: 'rgba(0, 184, 217, 0.16)' },
     { label: 'Total Weight (kg)', value: summary?.total_weight_kg ?? '—', icon: <TrendingUp size={24} color="#FFAB00" />, bg: 'rgba(255, 171, 0, 0.16)' },
-    { label: 'Slotted', value: summary?.status_counts?.SLOTTED ?? '—', icon: <CheckCircle2 size={24} color="#22C55E" />, bg: 'rgba(34, 197, 94, 0.16)' },
+    { label: 'Slotted Stock', value: summary?.stock_crates ?? '—', icon: <CheckCircle2 size={24} color="#22C55E" />, bg: 'rgba(34, 197, 94, 0.16)' },
+  ];
+
+  const reportTabs = [
+    { value: 'ledger', label: 'Inward Ledger' },
+    { value: 'preinward', label: 'Preinward Summaries' },
+    { value: 'quality', label: 'Quality Overviews' },
+    { value: 'stock', label: 'Stock Aggregates' },
   ];
 
   return (
@@ -80,6 +89,12 @@ export default function InboundReports() {
             <Typography variant="body2" color="text.secondary">Transaction in reports with status breakdown and filters</Typography>
           </Box>
         </Box>
+
+        <Paper sx={{ mb: 3 }}>
+          <Tabs value={reportType} onChange={(_, v) => setReportType(v)} variant="scrollable">
+            {reportTabs.map((t) => <Tab key={t.value} value={t.value} label={t.label} />)}
+          </Tabs>
+        </Paper>
 
         {/* Summary Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -157,6 +172,11 @@ export default function InboundReports() {
                       <TableCell align="right">Weight (kg)</TableCell>
                       <TableCell>Chamber</TableCell>
                       <TableCell>Grade</TableCell>
+                      {(reportType === 'quality' || reportType === 'ledger') && <TableCell>Temp °C</TableCell>}
+                      {(reportType === 'quality' || reportType === 'ledger') && <TableCell>Bruising %</TableCell>}
+                      {reportType === 'preinward' && <TableCell>Staging</TableCell>}
+                      {reportType === 'preinward' && <TableCell>ETA</TableCell>}
+                      {reportType === 'stock' && <TableCell>Remaining</TableCell>}
                       <TableCell>Status</TableCell>
                       <TableCell>Date</TableCell>
                     </TableRow>
@@ -176,10 +196,13 @@ export default function InboundReports() {
                         </TableCell>
                         <TableCell>{row.chamber_name || '—'}</TableCell>
                         <TableCell>
-                          {row.quality_grade ? (
-                            <Chip label={row.quality_grade} size="small" variant="outlined" />
-                          ) : '—'}
+                          {row.quality_grade ? <Chip label={row.quality_grade} size="small" variant="outlined" /> : '—'}
                         </TableCell>
+                        {(reportType === 'quality' || reportType === 'ledger') && <TableCell>{row.product_temperature_c ?? '—'}</TableCell>}
+                        {(reportType === 'quality' || reportType === 'ledger') && <TableCell>{row.bruising_ratio_percent ?? '—'}</TableCell>}
+                        {reportType === 'preinward' && <TableCell>{row.staging_bay || '—'}</TableCell>}
+                        {reportType === 'preinward' && <TableCell>{row.expected_arrival_at ? new Date(row.expected_arrival_at).toLocaleString() : '—'}</TableCell>}
+                        {reportType === 'stock' && <TableCell>{row.remaining_crates} crates / {row.remaining_weight_kg}kg</TableCell>}
                         <TableCell>
                           <Chip
                             label={row.status.replace(/_/g, ' ')}
