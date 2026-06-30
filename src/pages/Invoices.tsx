@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, TextField, Chip, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, Stack, TablePagination,
-  Fade, MenuItem, InputAdornment, IconButton, Tooltip
+  Fade, MenuItem, IconButton, Tooltip
 } from '@mui/material';
-import { Plus, Search, FileText, Download, Trash2, Receipt, X } from 'lucide-react';
+import { Plus, FileText, Download, Trash2, Receipt, X } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
 import { useAppToast } from '../hooks/useAppToast';
 import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
+import { INVOICE_SORT_OPTIONS, INVOICE_STATUS_OPTIONS } from '../constants/transactionFilters';
+import { useListFilters } from '../hooks/useListFilters';
+import ListFiltersBar from '../components/ListFiltersBar';
 
 const statusColors: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
   DRAFT: 'default',
@@ -27,10 +30,8 @@ export default function Invoices() {
   const [eligibleOrders, setEligibleOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const filters = useListFilters({ defaultSortField: 'issued_at', defaultSortOrder: 'desc' });
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [form, setForm] = useState({ transaction_out_id: '' as number | '', notes: '' });
@@ -40,14 +41,12 @@ export default function Invoices() {
   const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   const { showToast, Toast } = useAppToast();
 
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
     try {
-      const params = new URLSearchParams({
-        skip: (page * rowsPerPage).toString(),
-        limit: rowsPerPage.toString(),
-      });
-      if (searchQuery) params.append('search', searchQuery);
-
+      const params = new URLSearchParams();
+      filters.appendToParams(params);
       const res = await fetch(`${API}/api/invoices?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -61,7 +60,7 @@ export default function Invoices() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, filters.appendToParams]);
 
   const fetchEligible = async () => {
     try {
@@ -77,8 +76,7 @@ export default function Invoices() {
     }
   };
 
-  useEffect(() => { fetchInvoices(); }, [token, page, rowsPerPage]);
-  useEffect(() => { setPage(0); fetchInvoices(); }, [searchQuery]);
+  useEffect(() => { fetchInvoices(); }, [fetchInvoices, filters.page, filters.rowsPerPage, filters.filterKey]);
   useEffect(() => { if (open) fetchEligible(); }, [open, token]);
 
   const handleCreate = async () => {
@@ -201,16 +199,12 @@ export default function Invoices() {
           </Button>
         </Box>
 
-        <Paper sx={{ mb: 3, p: 2 }}>
-          <TextField
-            size="small"
-            placeholder="Search by invoice # or buyer..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={18} /></InputAdornment> } }}
-            sx={{ minWidth: 280 }}
-          />
-        </Paper>
+        <ListFiltersBar
+          filters={filters}
+          searchPlaceholder="Search invoice #, buyer, order ref..."
+          statusOptions={INVOICE_STATUS_OPTIONS}
+          sortOptions={INVOICE_SORT_OPTIONS}
+        />
 
         <Paper sx={{ overflow: 'hidden' }}>
           {loading ? (
@@ -270,7 +264,7 @@ export default function Invoices() {
                         <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
                           <FileText size={40} color="#919EAB" />
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            No invoices yet. Create one from a completed outbound order.
+                            No invoices match your filters.
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -282,10 +276,10 @@ export default function Invoices() {
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
                 count={totalCount}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(_, p) => setPage(p)}
-                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                rowsPerPage={filters.rowsPerPage}
+                page={filters.page}
+                onPageChange={(_, p) => filters.setPage(p)}
+                onRowsPerPageChange={(e) => { filters.setRowsPerPage(parseInt(e.target.value, 10)); filters.setPage(0); }}
               />
             </>
           )}
