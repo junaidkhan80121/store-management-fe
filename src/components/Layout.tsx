@@ -5,9 +5,12 @@ import Sidebar from '../components/Sidebar';
 import { DRAWER_WIDTH, MINI_DRAWER_WIDTH } from '../constants/layout';
 import { useLayoutBreakpoints } from '../hooks/useLayoutBreakpoints';
 import { useThemeContext } from '../context/ThemeContext';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/authSlice';
+import { type RootState } from '../store/store';
 import { useNavigate, Outlet } from 'react-router-dom';
+import AuthSessionWatcher from './AuthSessionWatcher';
+import { API_BASE } from '../lib/auth';
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -16,6 +19,7 @@ export default function Layout() {
   const { mode, toggleColorMode } = useThemeContext();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const refreshToken = useSelector((state: RootState) => state.auth.refreshToken);
 
   useEffect(() => {
     setMobileOpen(!isOverlay);
@@ -25,7 +29,18 @@ export default function Layout() {
     setMobileOpen((prev) => !prev);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (refreshToken) {
+      try {
+        await fetch(`${API_BASE}/token/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+      } catch {
+        // still clear local session
+      }
+    }
     dispatch(logout());
     navigate('/login');
   };
@@ -34,6 +49,7 @@ export default function Layout() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', width: '100%', overflowX: 'hidden' }}>
+      <AuthSessionWatcher />
       <AppBar
         position="fixed"
         elevation={0}

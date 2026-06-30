@@ -1,19 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Button, TextField, Typography, Paper, Alert, Link, IconButton } from '@mui/material';
 import { Sun, Moon } from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../store/authSlice';
 import { useNavigate } from 'react-router-dom';
 import { useThemeContext } from '../context/ThemeContext';
+import { SESSION_EXPIRED_KEY } from '../lib/auth';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [sessionMessage, setSessionMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { mode, toggleColorMode } = useThemeContext();
+
+  useEffect(() => {
+    if (sessionStorage.getItem(SESSION_EXPIRED_KEY)) {
+      sessionStorage.removeItem(SESSION_EXPIRED_KEY);
+      setSessionMessage('Your session has expired. Please sign in again.');
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +52,7 @@ export default function Login() {
       }
 
       const data = await response.json();
-      dispatch(setCredentials({ token: data.access_token }));
+      dispatch(setCredentials({ token: data.access_token, refreshToken: data.refresh_token }));
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message);
@@ -75,6 +84,7 @@ export default function Login() {
           Sign in to Cold Store
         </Typography>
         
+        {sessionMessage && <Alert severity="warning" sx={{ mb: 3 }}>{sessionMessage}</Alert>}
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
         
         <Box component="form" onSubmit={handleSubmit} noValidate>
