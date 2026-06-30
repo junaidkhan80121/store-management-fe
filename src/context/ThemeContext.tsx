@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
 import { ThemeProvider, createTheme, CssBaseline, type PaletteMode } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { getDesignTokens } from '../theme';
 
 interface ThemeContextType {
@@ -34,8 +36,10 @@ export const CustomThemeProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ThemeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <CssBaseline />
+          {children}
+        </LocalizationProvider>
       </ThemeProvider>
     </ThemeContext.Provider>
   );
