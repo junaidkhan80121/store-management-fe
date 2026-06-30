@@ -192,5 +192,33 @@ export const getDesignTokens = (mode: PaletteMode) => ({
         }),
       },
     },
+    MuiPickersDay: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          fontWeight: 500,
+        },
+        today: ({ theme }) => ({
+          border: `1px solid ${theme.palette.primary.main} !important`,
+        }),
+      },
+    },
+    MuiPickersCalendarHeader: {
+      styleOverrides: {
+        switchViewButton: ({ theme }) => ({
+          color: theme.palette.mode === 'dark' ? theme.palette.grey[400] : theme.palette.text.secondary,
+        }),
+        label: {
+          fontWeight: 600,
+        },
+      },
+    },
+    MuiPickersArrowSwitcher: {
+      styleOverrides: {
+        button: ({ theme }) => ({
+          color: theme.palette.mode === 'dark' ? theme.palette.grey[400] : theme.palette.text.secondary,
+        }),
+      },
+    },
   },
 });

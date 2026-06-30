@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, Chip, CircularProgress, Dialog, DialogTitle,
@@ -7,28 +7,30 @@ import {
 import { PackageSearch, ArrowRight, Package } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
-import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
+import { pageContainerSx, pageTitleSx } from '../../constants/responsive';
+import { OUTBOUND_SORT_OPTIONS, OUTBOUND_STATUS_OPTIONS } from '../../constants/transactionFilters';
+import { parseApiError } from '../../lib/api';
+import { useListFilters } from '../../hooks/useListFilters';
+import ListFiltersBar from '../../components/ListFiltersBar';
 
 export default function StoreOut() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const filters = useListFilters({ defaultStatus: 'DEMAND_DRAFT' });
   const token = useSelector((state: RootState) => state.auth.token);
   const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
     try {
-      const params = new URLSearchParams({
-        skip: (page * rowsPerPage).toString(),
-        limit: rowsPerPage.toString(),
-        status: 'DEMAND_DRAFT',
-      });
+      const params = new URLSearchParams();
+      filters.appendToParams(params);
       const res = await fetch(`${API}/api/transactions-out?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -42,9 +44,11 @@ export default function StoreOut() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, filters.appendToParams]);
 
-  useEffect(() => { fetchTransactions(); }, [token, page, rowsPerPage]);
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions, filters.page, filters.rowsPerPage, filters.filterKey]);
 
   const handleProcessStoreOut = async (id: number) => {
     setProcessing(true);
@@ -53,7 +57,7 @@ export default function StoreOut() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed to process store out');
+      if (!res.ok) throw new Error(await parseApiError(res, 'Failed to process store out'));
       setAlert({ type: 'success', message: `Transaction #${id} moved to Store Out successfully!` });
       setConfirmDialog(null);
       fetchTransactions();
@@ -84,6 +88,13 @@ export default function StoreOut() {
             {alert.message}
           </Alert>
         )}
+
+        <ListFiltersBar
+          filters={filters}
+          searchPlaceholder="Search buyer, destination, vehicle..."
+          statusOptions={OUTBOUND_STATUS_OPTIONS}
+          sortOptions={OUTBOUND_SORT_OPTIONS}
+        />
 
         <Paper sx={{ overflow: 'hidden' }}>
           {loading ? (
@@ -131,6 +142,7 @@ export default function StoreOut() {
                             color="primary"
                             endIcon={<ArrowRight size={16} />}
                             onClick={() => setConfirmDialog(txn)}
+                            disabled={txn.status !== 'DEMAND_DRAFT'}
                           >
                             Process
                           </Button>
@@ -142,7 +154,7 @@ export default function StoreOut() {
                         <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                           <Package size={40} color="#919EAB" />
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            No demand orders pending for store out
+                            No orders match your filters
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -154,10 +166,13 @@ export default function StoreOut() {
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
                 count={totalCount}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(_, p) => setPage(p)}
-                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                rowsPerPage={filters.rowsPerPage}
+                page={filters.page}
+                onPageChange={(_, p) => filters.setPage(p)}
+                onRowsPerPageChange={(e) => {
+                  filters.setRowsPerPage(parseInt(e.target.value, 10));
+                  filters.setPage(0);
+                }}
               />
             </>
           )}
