@@ -10,6 +10,7 @@ import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
 import { useAppToast } from '../hooks/useAppToast';
 import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
+import FilterDateField from '../components/FilterDateField';
 
 export default function GrowerGroups() {
   const [groups, setGroups] = useState<any[]>([]);
@@ -121,22 +122,8 @@ export default function GrowerGroups() {
               slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={18} /></InputAdornment> } }}
               sx={{ minWidth: 200, flexGrow: 1 }}
             />
-            <TextField
-              size="small"
-              label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-            <TextField
-              size="small"
-              label="End Date"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
+            <FilterDateField label="Start Date" value={startDate} onChange={setStartDate} />
+            <FilterDateField label="End Date" value={endDate} onChange={setEndDate} />
           </Box>
           
           {(searchQuery || startDate || endDate) && (

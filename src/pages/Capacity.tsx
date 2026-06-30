@@ -12,6 +12,7 @@ import ChamberVisualizer from '../components/ChamberVisualizer';
 import FloorPlanView from '../components/FloorPlanView';
 import { useAppToast } from '../hooks/useAppToast';
 import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
+import FilterDateField from '../components/FilterDateField';
 
 export default function Capacity() {
   const [chambers, setChambers] = useState<any[]>([]);
@@ -195,22 +196,8 @@ export default function Capacity() {
                 <MenuItem value="Maintenance">Maintenance</MenuItem>
               </Select>
             </FormControl>
-            <TextField
-              size="small"
-              label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-            <TextField
-              size="small"
-              label="End Date"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
+            <FilterDateField label="Start Date" value={startDate} onChange={setStartDate} />
+            <FilterDateField label="End Date" value={endDate} onChange={setEndDate} />
           </Box>
           
           {(searchQuery || statusFilter !== 'All' || startDate || endDate) && (

@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, Paper, Fade, Button, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Alert } from '@mui/material';
+import { Box, Typography, Paper, Fade, Button, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Alert, TablePagination } from '@mui/material';
 import { Grid as GridIcon, CheckCircle } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
 import { pageContainerSx } from '../../constants/responsive';
+import { INBOUND_SORT_OPTIONS, INBOUND_STATUS_OPTIONS } from '../../constants/transactionFilters';
+import { useListFilters } from '../../hooks/useListFilters';
+import ListFiltersBar from '../../components/ListFiltersBar';
 
 interface Transaction {
   id: number;
@@ -37,25 +40,33 @@ export default function Slotting() {
   const [slotLevel, setSlotLevel] = useState('');
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [totalCount, setTotalCount] = useState(0);
+  const filters = useListFilters({ defaultStatus: 'DOCKYARD' });
   const token = useSelector((state: RootState) => state.auth.token);
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   const selectedChamber = chambers.find((c) => c.id === chamberId);
 
-  const fetchSlottingQueue = useCallback(async (isMounted: boolean) => {
+  const fetchSlottingQueue = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/transactions-in?status=DOCKYARD`, {
+      const params = new URLSearchParams();
+      filters.appendToParams(params);
+      const response = await fetch(`${API}/api/transactions-in?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
-        if (isMounted) setTransactions(data.items || []);
+        setTransactions(data.items || []);
+        setTotalCount(data.total || 0);
       }
     } catch (err) {
       console.error("Failed to fetch slotting queue", err);
     } finally {
-      if (isMounted) setLoading(false);
+      setLoading(false);
     }
-  }, [token]);
+  }, [token, filters.appendToParams]);
 
   const fetchChambers = useCallback(async (isMounted: boolean) => {
     try {
@@ -72,11 +83,14 @@ export default function Slotting() {
   }, [token]);
 
   useEffect(() => {
+    fetchSlottingQueue();
+  }, [fetchSlottingQueue, filters.page, filters.rowsPerPage, filters.filterKey]);
+
+  useEffect(() => {
     let isMounted = true;
-    fetchSlottingQueue(isMounted);
     fetchChambers(isMounted);
     return () => { isMounted = false; };
-  }, [fetchSlottingQueue, fetchChambers]);
+  }, [fetchChambers]);
 
   const handleSlot = async () => {
     if (!selectedTx || !chamberId) return;
@@ -106,7 +120,7 @@ export default function Slotting() {
       setSlotRow('');
       setSlotColumn('');
       setSlotLevel('');
-      fetchSlottingQueue(true);
+      fetchSlottingQueue();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Slotting failed');
     } finally {
@@ -128,14 +142,22 @@ export default function Slotting() {
           Commit received lots to physical coordinates in cold vaults based on required temperature curves.
         </Typography>
 
+        <ListFiltersBar
+          filters={filters}
+          searchPlaceholder="Search grower, vehicle, item type..."
+          statusOptions={INBOUND_STATUS_OPTIONS}
+          sortOptions={INBOUND_SORT_OPTIONS}
+        />
+
         <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
           ) : transactions.length === 0 ? (
             <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Typography color="text.secondary">No stock waiting for chamber slotting.</Typography>
+              <Typography color="text.secondary">No stock matches your filters.</Typography>
             </Box>
           ) : (
+            <>
             <TableContainer>
               <Table>
                 <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
@@ -166,6 +188,19 @@ export default function Slotting() {
                 </TableBody>
               </Table>
             </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={totalCount}
+              rowsPerPage={filters.rowsPerPage}
+              page={filters.page}
+              onPageChange={(_, p) => filters.setPage(p)}
+              onRowsPerPageChange={(e) => {
+                filters.setRowsPerPage(parseInt(e.target.value, 10));
+                filters.setPage(0);
+              }}
+            />
+            </>
           )}
         </Paper>
 
