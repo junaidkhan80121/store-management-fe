@@ -8,6 +8,7 @@ import { Users, Search, Package, TrendingUp, FileText } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
 import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
+import FilterDateField from '../components/FilterDateField';
 
 export default function GrowerReports() {
   const [data, setData] = useState<any[]>([]);
@@ -142,10 +143,8 @@ export default function GrowerReports() {
                   <MenuItem value="PENDING">Pending</MenuItem>
                 </Select>
               </FormControl>
-              <TextField size="small" label="From" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }} />
-              <TextField size="small" label="To" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }} />
+              <FilterDateField label="From" value={startDate} onChange={setStartDate} />
+              <FilterDateField label="To" value={endDate} onChange={setEndDate} />
             </Box>
             {(searchQuery || selectedGroupId || lifecycleStatus || startDate || endDate) && (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>

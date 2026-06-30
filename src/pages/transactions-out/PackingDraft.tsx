@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, TextField, Chip, CircularProgress,
@@ -8,14 +8,17 @@ import {
 import { PackageCheck, ArrowRight, Package } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
-import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
+import { pageContainerSx, pageTitleSx } from '../../constants/responsive';
+import { OUTBOUND_SORT_OPTIONS, OUTBOUND_STATUS_OPTIONS } from '../../constants/transactionFilters';
+import { parseApiError } from '../../lib/api';
+import { useListFilters } from '../../hooks/useListFilters';
+import ListFiltersBar from '../../components/ListFiltersBar';
 
 export default function PackingDraft() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const filters = useListFilters({ defaultStatus: 'STORE_OUT' });
   const [draftDialog, setDraftDialog] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -26,13 +29,12 @@ export default function PackingDraft() {
   const token = useSelector((state: RootState) => state.auth.token);
   const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
     try {
-      const params = new URLSearchParams({
-        skip: (page * rowsPerPage).toString(),
-        limit: rowsPerPage.toString(),
-        status: 'STORE_OUT',
-      });
+      const params = new URLSearchParams();
+      filters.appendToParams(params);
       const res = await fetch(`${API}/api/transactions-out?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -46,9 +48,9 @@ export default function PackingDraft() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, filters.appendToParams]);
 
-  useEffect(() => { fetchTransactions(); }, [token, page, rowsPerPage]);
+  useEffect(() => { fetchTransactions(); }, [fetchTransactions, filters.page, filters.rowsPerPage, filters.filterKey]);
 
   const handleCreateDraft = async (id: number) => {
     setProcessing(true);
@@ -62,7 +64,7 @@ export default function PackingDraft() {
           unit_price_per_kg: unitPrice !== '' ? Number(unitPrice) : null,
         }),
       });
-      if (!res.ok) throw new Error('Failed to create packing draft');
+      if (!res.ok) throw new Error(await parseApiError(res, 'Failed to create packing draft'));
       setAlert({ type: 'success', message: `Packing draft created for order #${id}!` });
       setDraftDialog(null);
       setPackingType('');
@@ -96,6 +98,13 @@ export default function PackingDraft() {
             {alert.message}
           </Alert>
         )}
+
+        <ListFiltersBar
+          filters={filters}
+          searchPlaceholder="Search buyer, destination, vehicle..."
+          statusOptions={OUTBOUND_STATUS_OPTIONS}
+          sortOptions={OUTBOUND_SORT_OPTIONS}
+        />
 
         <Paper sx={{ overflow: 'hidden' }}>
           {loading ? (
@@ -164,10 +173,10 @@ export default function PackingDraft() {
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
                 count={totalCount}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(_, p) => setPage(p)}
-                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                rowsPerPage={filters.rowsPerPage}
+                page={filters.page}
+                onPageChange={(_, p) => filters.setPage(p)}
+                onRowsPerPageChange={(e) => { filters.setRowsPerPage(parseInt(e.target.value, 10)); filters.setPage(0); }}
               />
             </>
           )}

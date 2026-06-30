@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, TextField, MenuItem, Dialog, DialogTitle,
-  DialogContent, DialogActions, Alert, CircularProgress, Chip, InputAdornment,
+  DialogContent, DialogActions, Alert, CircularProgress, Chip,
   Stack, TablePagination, Grid, Fade
 } from '@mui/material';
-import { Plus, Search, Send, Package, ShoppingCart } from 'lucide-react';
+import { Plus, Send, Package, ShoppingCart } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
 import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
+import { OUTBOUND_SORT_OPTIONS, OUTBOUND_STATUS_OPTIONS } from '../../constants/transactionFilters';
+import { parseApiError } from '../../lib/api';
+import { useListFilters } from '../../hooks/useListFilters';
+import ListFiltersBar from '../../components/ListFiltersBar';
 
 const statusColors: Record<string, string> = {
   DEMAND_DRAFT: '#FFAB00',
@@ -24,12 +28,11 @@ export default function DemandOrder() {
   const [sourceTransactions, setSourceTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const filters = useListFilters();
   const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [lotAvailability, setLotAvailability] = useState<any>(null);
 
   const [form, setForm] = useState({
     transaction_in_id: '' as number | '',
@@ -43,16 +46,12 @@ export default function DemandOrder() {
   const token = useSelector((state: RootState) => state.auth.token);
   const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
     try {
-      const params = new URLSearchParams({
-        skip: (page * rowsPerPage).toString(),
-        limit: rowsPerPage.toString(),
-        sort_by: 'created_at',
-        sort_order: 'desc',
-      });
-      if (searchQuery) params.append('search', searchQuery);
-
+      const params = new URLSearchParams();
+      filters.appendToParams(params);
       const res = await fetch(`${API}/api/transactions-out?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -66,7 +65,7 @@ export default function DemandOrder() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, filters.appendToParams]);
 
   const fetchSourceTransactions = async () => {
     try {
@@ -82,9 +81,34 @@ export default function DemandOrder() {
     }
   };
 
-  useEffect(() => { fetchTransactions(); }, [token, page, rowsPerPage]);
+  useEffect(() => { fetchTransactions(); }, [fetchTransactions, filters.page, filters.rowsPerPage, filters.filterKey]);
   useEffect(() => { fetchSourceTransactions(); }, [token]);
-  useEffect(() => { setPage(0); fetchTransactions(); }, [searchQuery]);
+
+  useEffect(() => {
+    if (!form.transaction_in_id || !token) {
+      setLotAvailability(null);
+      return;
+    }
+    const loadAvailability = async () => {
+      try {
+        const res = await fetch(`${API}/api/transactions-in/${form.transaction_in_id}/availability`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) setLotAvailability(await res.json());
+        else setLotAvailability(null);
+      } catch {
+        setLotAvailability(null);
+      }
+    };
+    loadAvailability();
+  }, [form.transaction_in_id, token]);
+
+  const requestedCrates = Number(form.crates_out) || 0;
+  const requestedWeight = Number(form.weight_out_kg) || 0;
+  const stockWarning =
+    lotAvailability &&
+    (requestedCrates > lotAvailability.available_crates ||
+      requestedWeight > lotAvailability.available_weight_kg);
 
   const handleSubmit = async () => {
     if (!form.transaction_in_id) return;
@@ -104,7 +128,7 @@ export default function DemandOrder() {
           destination: form.destination || null,
         }),
       });
-      if (!res.ok) throw new Error('Failed to create demand order');
+      if (!res.ok) throw new Error(await parseApiError(res, 'Failed to create demand order'));
 
       setSubmitStatus({ type: 'success', message: 'Demand order created successfully!' });
       setForm({ transaction_in_id: '', crates_out: '', weight_out_kg: '', buyer_name: '', buyer_contact: '', destination: '' });
@@ -141,16 +165,12 @@ export default function DemandOrder() {
           </Alert>
         )}
 
-        <Paper sx={{ mb: 3, p: 2 }}>
-          <TextField
-            size="small"
-            placeholder="Search by buyer, destination, vehicle..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={18} /></InputAdornment> } }}
-            sx={{ minWidth: 300 }}
-          />
-        </Paper>
+        <ListFiltersBar
+          filters={filters}
+          searchPlaceholder="Search buyer, destination, vehicle..."
+          statusOptions={OUTBOUND_STATUS_OPTIONS}
+          sortOptions={OUTBOUND_SORT_OPTIONS}
+        />
 
         <Paper sx={{ overflow: 'hidden' }}>
           {loading ? (
@@ -224,10 +244,10 @@ export default function DemandOrder() {
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
                 count={totalCount}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(_, p) => setPage(p)}
-                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                rowsPerPage={filters.rowsPerPage}
+                page={filters.page}
+                onPageChange={(_, p) => filters.setPage(p)}
+                onRowsPerPageChange={(e) => { filters.setRowsPerPage(parseInt(e.target.value, 10)); filters.setPage(0); }}
               />
             </>
           )}
@@ -248,13 +268,23 @@ export default function DemandOrder() {
               >
                 {sourceTransactions.map((t) => (
                   <MenuItem key={t.id} value={t.id}>
-                    TXN-{t.id} — {t.item_type} — {t.crates_count} crates ({t.total_weight_kg} kg)
+                    TXN-{t.id} — {t.item_type} — {t.remaining_crates ?? t.crates_count} crates avail ({t.remaining_weight_kg ?? t.total_weight_kg} kg)
                   </MenuItem>
                 ))}
                 {sourceTransactions.length === 0 && (
                   <MenuItem disabled value="">No slotted transactions available</MenuItem>
                 )}
               </TextField>
+              {lotAvailability && (
+                <Alert severity={stockWarning ? 'warning' : 'info'}>
+                  Source lot TXN-{lotAvailability.transaction_in_id}:{' '}
+                  <strong>{lotAvailability.available_crates}</strong> crates /{' '}
+                  <strong>{lotAvailability.available_weight_kg}</strong> kg available
+                  {lotAvailability.committed_crates > 0 && (
+                    <> ({lotAvailability.committed_crates} crates already on other open orders)</>
+                  )}
+                </Alert>
+              )}
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6 }}>
                   <TextField fullWidth required type="number" label="Crates Out" value={form.crates_out}
@@ -276,7 +306,7 @@ export default function DemandOrder() {
           </DialogContent>
           <DialogActions sx={{ p: 3, pt: 0 }}>
             <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
-            <Button onClick={handleSubmit} variant="contained" disabled={submitting || !form.transaction_in_id}
+            <Button onClick={handleSubmit} variant="contained" disabled={submitting || !form.transaction_in_id || !!stockWarning}
               startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <Send size={16} />}>
               {submitting ? 'Creating...' : 'Create Order'}
             </Button>

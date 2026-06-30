@@ -8,6 +8,7 @@ import { ArrowUpFromLine, Search, Package, TrendingUp, CheckCircle2, Activity, T
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
 import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
+import FilterDateField from '../../components/FilterDateField';
 
 const statusColors: Record<string, string> = {
   DEMAND_DRAFT: '#FFAB00',
@@ -157,10 +158,8 @@ export default function OutboundReports() {
                 {Object.keys(statusColors).map((s) => <MenuItem key={s} value={s}>{s.replace(/_/g, ' ')}</MenuItem>)}
               </Select>
             </FormControl>
-            <TextField size="small" label="From" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }} />
-            <TextField size="small" label="To" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }} />
+            <FilterDateField label="From" value={startDate} onChange={setStartDate} />
+            <FilterDateField label="To" value={endDate} onChange={setEndDate} />
             {(searchQuery || status || startDate || endDate) && (
               <Button size="small" color="error" onClick={() => { setSearchQuery(''); setStatus(''); setStartDate(''); setEndDate(''); }}>Clear</Button>
             )}

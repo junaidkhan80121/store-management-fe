@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, Paper, Fade, Button, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem } from '@mui/material';
+import { Box, Typography, Paper, Fade, Button, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, TablePagination } from '@mui/material';
 import { Truck, ArrowRightCircle } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
 import { pageContainerSx } from '../../constants/responsive';
+import { INBOUND_SORT_OPTIONS, INBOUND_STATUS_OPTIONS } from '../../constants/transactionFilters';
+import { useListFilters } from '../../hooks/useListFilters';
+import ListFiltersBar from '../../components/ListFiltersBar';
 
 interface Transaction {
   id: number;
@@ -29,29 +32,35 @@ export default function Dockyard() {
   const [equipmentId, setEquipmentId] = useState('');
   const [terminalStatus, setTerminalStatus] = useState('OFFLOADING');
   const [processing, setProcessing] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const filters = useListFilters({ defaultStatus: 'QUALITY' });
   const token = useSelector((state: RootState) => state.auth.token);
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-  const fetchDockyardQueue = useCallback(async (isMounted: boolean) => {
+  const fetchDockyardQueue = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/transactions-in?status=QUALITY`, {
+      const params = new URLSearchParams();
+      filters.appendToParams(params);
+      const response = await fetch(`${API}/api/transactions-in?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
-        if (isMounted) setTransactions(data.items || []);
+        setTransactions(data.items || []);
+        setTotalCount(data.total || 0);
       }
     } catch (err) {
       console.error("Failed to fetch dockyard queue", err);
     } finally {
-      if (isMounted) setLoading(false);
+      setLoading(false);
     }
-  }, [token]);
+  }, [token, filters.appendToParams]);
 
   useEffect(() => {
-    let isMounted = true;
-    fetchDockyardQueue(isMounted);
-    return () => { isMounted = false; };
-  }, [fetchDockyardQueue]);
+    fetchDockyardQueue();
+  }, [fetchDockyardQueue, filters.page, filters.rowsPerPage, filters.filterKey]);
 
   const handleOffload = async () => {
     if (!selectedTx) return;
@@ -71,7 +80,7 @@ export default function Dockyard() {
         setSelectedTx(null);
         setDockyardBay('');
         setEquipmentId('');
-        fetchDockyardQueue(true);
+        fetchDockyardQueue();
       }
     } catch (err) {
       console.error(err);
@@ -94,14 +103,22 @@ export default function Dockyard() {
           Track terminal status, assign physical bays, and log material-handling equipment utilization.
         </Typography>
 
+        <ListFiltersBar
+          filters={filters}
+          searchPlaceholder="Search grower, vehicle, item type..."
+          statusOptions={INBOUND_STATUS_OPTIONS}
+          sortOptions={INBOUND_SORT_OPTIONS}
+        />
+
         <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
           ) : transactions.length === 0 ? (
             <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Typography color="text.secondary">No vehicles in dockyard queue.</Typography>
+              <Typography color="text.secondary">No vehicles match your filters.</Typography>
             </Box>
           ) : (
+            <>
             <TableContainer>
               <Table>
                 <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
@@ -135,6 +152,19 @@ export default function Dockyard() {
                 </TableBody>
               </Table>
             </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={totalCount}
+              rowsPerPage={filters.rowsPerPage}
+              page={filters.page}
+              onPageChange={(_, p) => filters.setPage(p)}
+              onRowsPerPageChange={(e) => {
+                filters.setRowsPerPage(parseInt(e.target.value, 10));
+                filters.setPage(0);
+              }}
+            />
+            </>
           )}
         </Paper>
 

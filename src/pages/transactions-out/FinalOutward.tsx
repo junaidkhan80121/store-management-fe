@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Button, TextField, Chip, CircularProgress,
@@ -8,29 +8,33 @@ import {
 import { CheckCircle2, LogOut, Package } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
-import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
+import { pageContainerSx, pageTitleSx } from '../../constants/responsive';
+import { OUTBOUND_SORT_OPTIONS, OUTBOUND_STATUS_OPTIONS } from '../../constants/transactionFilters';
+import { parseApiError } from '../../lib/api';
+import { useListFilters } from '../../hooks/useListFilters';
+import ListFiltersBar from '../../components/ListFiltersBar';
 
 export default function FinalOutward() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const filters = useListFilters({ defaultStatus: 'DISPATCHED' });
   const [confirmDialog, setConfirmDialog] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [outwardNotes, setOutwardNotes] = useState('');
+  const [stockCheck, setStockCheck] = useState<any>(null);
+  const [checkingStock, setCheckingStock] = useState(false);
 
   const token = useSelector((state: RootState) => state.auth.token);
   const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
     try {
-      const params = new URLSearchParams({
-        skip: (page * rowsPerPage).toString(),
-        limit: rowsPerPage.toString(),
-        status: 'DISPATCHED',
-      });
+      const params = new URLSearchParams();
+      filters.appendToParams(params);
       const res = await fetch(`${API}/api/transactions-out?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -44,9 +48,31 @@ export default function FinalOutward() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, filters.appendToParams]);
 
-  useEffect(() => { fetchTransactions(); }, [token, page, rowsPerPage]);
+  useEffect(() => { fetchTransactions(); }, [fetchTransactions, filters.page, filters.rowsPerPage, filters.filterKey]);
+
+  useEffect(() => {
+    if (!confirmDialog?.id || !token) {
+      setStockCheck(null);
+      return;
+    }
+    const loadStock = async () => {
+      setCheckingStock(true);
+      try {
+        const res = await fetch(`${API}/api/transactions-out/${confirmDialog.id}/stock-check`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) setStockCheck(await res.json());
+        else setStockCheck(null);
+      } catch {
+        setStockCheck(null);
+      } finally {
+        setCheckingStock(false);
+      }
+    };
+    loadStock();
+  }, [confirmDialog?.id, token]);
 
   const handleFinalOutward = async (id: number) => {
     setProcessing(true);
@@ -58,7 +84,7 @@ export default function FinalOutward() {
           final_outward_notes: outwardNotes || null,
         }),
       });
-      if (!res.ok) throw new Error('Failed to finalize outward');
+      if (!res.ok) throw new Error(await parseApiError(res, 'Failed to finalize outward'));
       setAlert({ type: 'success', message: `Order #${id} finalized! Transaction is now complete.` });
       setConfirmDialog(null);
       setOutwardNotes('');
@@ -90,6 +116,13 @@ export default function FinalOutward() {
             {alert.message}
           </Alert>
         )}
+
+        <ListFiltersBar
+          filters={filters}
+          searchPlaceholder="Search buyer, destination, vehicle..."
+          statusOptions={OUTBOUND_STATUS_OPTIONS}
+          sortOptions={OUTBOUND_SORT_OPTIONS}
+        />
 
         <Paper sx={{ overflow: 'hidden' }}>
           {loading ? (
@@ -163,10 +196,10 @@ export default function FinalOutward() {
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
                 count={totalCount}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(_, p) => setPage(p)}
-                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                rowsPerPage={filters.rowsPerPage}
+                page={filters.page}
+                onPageChange={(_, p) => filters.setPage(p)}
+                onRowsPerPageChange={(e) => { filters.setRowsPerPage(parseInt(e.target.value, 10)); filters.setPage(0); }}
               />
             </>
           )}
@@ -184,6 +217,21 @@ export default function FinalOutward() {
                 {confirmDialog?.dispatch_vehicle && <Typography variant="body2">Vehicle: {confirmDialog.dispatch_vehicle}</Typography>}
                 {confirmDialog?.destination && <Typography variant="body2">Destination: {confirmDialog.destination}</Typography>}
               </Box>
+              {checkingStock ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={18} />
+                  <Typography variant="body2" color="text.secondary">Checking source lot stock…</Typography>
+                </Box>
+              ) : stockCheck && !stockCheck.can_proceed && (
+                <Alert severity="error">
+                  {stockCheck.warnings?.join(' ')}
+                </Alert>
+              )}
+              {stockCheck?.can_proceed && (
+                <Alert severity="success">
+                  Source lot has {stockCheck.remaining_crates} crates / {stockCheck.remaining_weight_kg} kg remaining — sufficient for this order.
+                </Alert>
+              )}
               <TextField
                 fullWidth
                 multiline
@@ -197,7 +245,8 @@ export default function FinalOutward() {
           </DialogContent>
           <DialogActions sx={{ p: 3, pt: 0 }}>
             <Button onClick={() => setConfirmDialog(null)} color="inherit">Cancel</Button>
-            <Button onClick={() => handleFinalOutward(confirmDialog?.id)} variant="contained" disabled={processing}
+            <Button onClick={() => handleFinalOutward(confirmDialog?.id)} variant="contained"
+              disabled={processing || checkingStock || (stockCheck && !stockCheck.can_proceed)}
               startIcon={processing ? <CircularProgress size={16} color="inherit" /> : <CheckCircle2 size={16} />}>
               {processing ? 'Finalizing...' : 'Confirm Final Outward'}
             </Button>

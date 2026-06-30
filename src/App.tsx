@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider, useSelector } from 'react-redux';
 import { store, type RootState } from './store/store';
 import { CustomThemeProvider } from './context/ThemeContext';
+import { ensureValidAccessToken, isAccessTokenExpired } from './lib/auth';
+import { Box, CircularProgress } from '@mui/material';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Layout from './components/Layout';
@@ -33,7 +35,29 @@ import OutboundReports from './pages/reports/OutboundReports';
 import Invoices from './pages/Invoices';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const { isAuthenticated, token } = useSelector((state: RootState) => state.auth);
+  const [ready, setReady] = useState(!isAuthenticated);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setReady(true);
+      return;
+    }
+    if (token && isAccessTokenExpired(token)) {
+      ensureValidAccessToken().finally(() => setReady(true));
+    } else {
+      setReady(true);
+    }
+  }, [isAuthenticated, token]);
+
+  if (!ready) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
