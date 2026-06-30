@@ -1,0 +1,322 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, Button, TextField, Chip, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions, Stack, TablePagination,
+  Fade, MenuItem, InputAdornment, IconButton, Tooltip
+} from '@mui/material';
+import { Plus, Search, FileText, Download, Trash2, Receipt } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { type RootState } from '../store/store';
+import { useAppToast } from '../hooks/useAppToast';
+
+const statusColors: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
+  DRAFT: 'default',
+  ISSUED: 'info',
+  PAID: 'success',
+  CANCELLED: 'error',
+};
+
+export default function Invoices() {
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [eligibleOrders, setEligibleOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [form, setForm] = useState({ transaction_out_id: '' as number | '', tax_rate: '0', notes: '' });
+
+  const token = useSelector((state: RootState) => state.auth.token);
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const { showToast, Toast } = useAppToast();
+
+  const fetchInvoices = async () => {
+    try {
+      const params = new URLSearchParams({
+        skip: (page * rowsPerPage).toString(),
+        limit: rowsPerPage.toString(),
+      });
+      if (searchQuery) params.append('search', searchQuery);
+
+      const res = await fetch(`${API}/api/invoices?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInvoices(data.items || []);
+        setTotalCount(data.total || 0);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEligible = async () => {
+    try {
+      const res = await fetch(`${API}/api/invoices/eligible-orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEligibleOrders(data.items || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => { fetchInvoices(); }, [token, page, rowsPerPage]);
+  useEffect(() => { setPage(0); fetchInvoices(); }, [searchQuery]);
+  useEffect(() => { if (open) fetchEligible(); }, [open, token]);
+
+  const handleCreate = async () => {
+    if (!form.transaction_out_id) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API}/api/invoices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          transaction_out_id: form.transaction_out_id,
+          tax_rate: Number(form.tax_rate) || 0,
+          notes: form.notes || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to create invoice');
+      }
+      const created = await res.json();
+      setOpen(false);
+      setForm({ transaction_out_id: '', tax_rate: '0', notes: '' });
+      fetchInvoices();
+      showToast(`Invoice ${created.invoice_number} created`);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to create invoice', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const downloadPdf = async (invoice: any) => {
+    try {
+      const res = await fetch(`${API}/api/invoices/${invoice.id}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to download PDF');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${invoice.invoice_number}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showToast('PDF downloaded');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'PDF download failed', 'error');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      const res = await fetch(`${API}/api/invoices/${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to delete invoice');
+      setDeleteTarget(null);
+      fetchInvoices();
+      showToast('Invoice deleted');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Delete failed', 'error');
+    }
+  };
+
+  const selectedOrder = eligibleOrders.find((o) => o.id === form.transaction_out_id);
+
+  return (
+    <Fade in timeout={500}>
+      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(0, 167, 111, 0.16)', mr: 2, display: 'flex' }}>
+              <Receipt size={24} color="#00A76F" />
+            </Box>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>Invoices</Typography>
+              <Typography variant="body2" color="text.secondary">Create and download PDF invoices for outbound orders</Typography>
+            </Box>
+          </Box>
+          <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => setOpen(true)}>
+            Create Invoice
+          </Button>
+        </Box>
+
+        <Paper sx={{ mb: 3, p: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Search by invoice # or buyer..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={18} /></InputAdornment> } }}
+            sx={{ minWidth: 280 }}
+          />
+        </Paper>
+
+        <Paper sx={{ overflow: 'hidden' }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress /></Box>
+          ) : (
+            <>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Invoice #</TableCell>
+                      <TableCell>Buyer</TableCell>
+                      <TableCell>Order Ref</TableCell>
+                      <TableCell align="right">Weight</TableCell>
+                      <TableCell align="right">Subtotal</TableCell>
+                      <TableCell align="right">Total</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Date</TableCell>
+                      <TableCell align="right">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {invoices.map((inv) => (
+                      <TableRow key={inv.id} hover>
+                        <TableCell>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{inv.invoice_number}</Typography>
+                        </TableCell>
+                        <TableCell>{inv.buyer_name || '—'}</TableCell>
+                        <TableCell>#{inv.transaction_out_id}</TableCell>
+                        <TableCell align="right">{inv.weight_out_kg} kg</TableCell>
+                        <TableCell align="right">₹ {inv.subtotal?.toLocaleString()}</TableCell>
+                        <TableCell align="right">
+                          <Typography sx={{ fontWeight: 600 }}>₹ {inv.total_amount?.toLocaleString()}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={inv.status} size="small" color={statusColors[inv.status] || 'default'} />
+                        </TableCell>
+                        <TableCell>
+                          {inv.issued_at ? new Date(inv.issued_at).toLocaleDateString() : '—'}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Tooltip title="Download PDF">
+                            <IconButton size="small" color="primary" onClick={() => downloadPdf(inv)}>
+                              <Download size={18} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton size="small" color="error" onClick={() => setDeleteTarget(inv)}>
+                              <Trash2 size={18} />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {invoices.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
+                          <FileText size={40} color="#919EAB" />
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            No invoices yet. Create one from a completed outbound order.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={totalCount}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={(_, p) => setPage(p)}
+                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+              />
+            </>
+          )}
+        </Paper>
+
+        <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Create Invoice</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2.5} sx={{ mt: 1 }}>
+              <TextField
+                select
+                fullWidth
+                required
+                label="Outbound Order"
+                value={form.transaction_out_id}
+                onChange={(e) => setForm({ ...form, transaction_out_id: Number(e.target.value) })}
+              >
+                {eligibleOrders.map((o) => (
+                  <MenuItem key={o.id} value={o.id}>
+                    #{o.id} — {o.buyer_name || 'Buyer'} — {o.item_type} — ₹{(o.stock_valuation || 0).toLocaleString()}
+                  </MenuItem>
+                ))}
+                {eligibleOrders.length === 0 && (
+                  <MenuItem disabled value="">No eligible orders (complete packing draft with unit price first)</MenuItem>
+                )}
+              </TextField>
+              {selectedOrder && (
+                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover' }}>
+                  <Typography variant="body2">{selectedOrder.crates_out} crates · {selectedOrder.weight_out_kg} kg</Typography>
+                  <Typography variant="body2">Valuation: ₹ {(selectedOrder.stock_valuation || 0).toLocaleString()}</Typography>
+                </Paper>
+              )}
+              <TextField
+                fullWidth
+                type="number"
+                label="Tax Rate (%)"
+                value={form.tax_rate}
+                onChange={(e) => setForm({ ...form, tax_rate: e.target.value })}
+                slotProps={{ htmlInput: { min: 0, step: '0.1' } }}
+              />
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                label="Notes (optional)"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
+            <Button variant="contained" onClick={handleCreate} disabled={submitting || !form.transaction_out_id}>
+              {submitting ? 'Creating...' : 'Create & Issue'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+          <DialogTitle>Delete Invoice</DialogTitle>
+          <DialogContent>
+            <Typography>Delete invoice <strong>{deleteTarget?.invoice_number}</strong>?</Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setDeleteTarget(null)} color="inherit">Cancel</Button>
+            <Button onClick={handleDelete} color="error" variant="contained">Delete</Button>
+          </DialogActions>
+        </Dialog>
+
+        <Toast />
+      </Box>
+    </Fade>
+  );
+}

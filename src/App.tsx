@@ -30,6 +30,7 @@ import FinalOutward from './pages/transactions-out/FinalOutward';
 // Reports
 import InboundReports from './pages/reports/InboundReports';
 import OutboundReports from './pages/reports/OutboundReports';
+import Invoices from './pages/Invoices';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -81,6 +82,7 @@ function App() {
               {/* Reports */}
               <Route path="/reports/inbound" element={<InboundReports />} />
               <Route path="/reports/outbound" element={<OutboundReports />} />
+              <Route path="/invoices" element={<Invoices />} />
 
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

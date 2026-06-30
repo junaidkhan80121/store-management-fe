@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Box, AppBar, Toolbar, Typography, IconButton, Button } from '@mui/material';
 import { Menu, Sun, Moon, LogOut } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import { DRAWER_WIDTH, MINI_DRAWER_WIDTH } from '../constants/layout';
 import { useThemeContext } from '../context/ThemeContext';
 import { useDispatch } from 'react-redux';
 import { logout } from '../store/authSlice';
 import { useNavigate, Outlet } from 'react-router-dom';
-
-const drawerWidth = 240;
-const miniDrawerWidth = 88;
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(true);
@@ -31,8 +29,8 @@ export default function Layout() {
         position="fixed"
         elevation={0}
         sx={{
-          width: { xs: '100%', sm: `calc(100% - ${mobileOpen ? drawerWidth : miniDrawerWidth}px)` },
-          ml: { xs: 0, sm: `${mobileOpen ? drawerWidth : miniDrawerWidth}px` },
+          width: { xs: '100%', sm: `calc(100% - ${mobileOpen ? DRAWER_WIDTH : MINI_DRAWER_WIDTH}px)` },
+          ml: { xs: 0, sm: `${mobileOpen ? DRAWER_WIDTH : MINI_DRAWER_WIDTH}px` },
           transition: (theme) => theme.transitions.create(['margin', 'width'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
@@ -55,7 +53,7 @@ export default function Layout() {
         </Toolbar>
       </AppBar>
       
-      <Sidebar mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} />
+      <Sidebar mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} onDrawerOpen={() => setMobileOpen(true)} />
 
       <Box
         component="main"

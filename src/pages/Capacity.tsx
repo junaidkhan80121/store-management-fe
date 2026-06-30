@@ -119,6 +119,11 @@ export default function Capacity() {
         body: JSON.stringify({
           used_capacity: parseInt(editingChamber.used_capacity) || 0,
           status: editingChamber.status,
+          temperature_c: parseFloat(editingChamber.temperature_c) || -2,
+          current_temperature_c: editingChamber.current_temperature_c !== '' && editingChamber.current_temperature_c != null
+            ? parseFloat(editingChamber.current_temperature_c)
+            : null,
+          zone: editingChamber.zone || null,
         })
       });
       if (!response.ok) throw new Error('Failed to update chamber');
@@ -169,8 +174,6 @@ export default function Capacity() {
         <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => setOpen(true)}>New Chamber</Button>
       </Box>
 
-      <FloorPlanView />
-      
       <Paper sx={{ mb: 3, p: 2, elevation: 0 }}>
         <Stack spacing={2}>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -244,6 +247,9 @@ export default function Capacity() {
                     <Typography variant="overline" sx={{ fontWeight: '700' }}>Status</Typography>
                   </TableSortLabel>
                 </TableCell>
+                <TableCell>
+                  <Typography variant="overline" sx={{ fontWeight: '700' }}>Target Temp</Typography>
+                </TableCell>
                 <TableCell sx={{ minWidth: 250 }}>
                   <TableSortLabel active={sortField === 'used_capacity'} direction={sortField === 'used_capacity' ? sortOrder : 'asc'} onClick={() => handleRequestSort('used_capacity')}>
                     <Typography variant="overline" sx={{ fontWeight: '700' }}>Capacity Usage</Typography>
@@ -282,6 +288,9 @@ export default function Capacity() {
                     <TableCell>
                       <Chip label={row.status} size="small" sx={{ bgcolor: chipColor, color: chipTextColor, fontWeight: 'bold' }} />
                     </TableCell>
+                    <TableCell sx={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                      {row.temperature_c != null ? `${row.temperature_c}°C` : '—'}
+                    </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Box sx={{ flexGrow: 1 }}>
@@ -318,7 +327,7 @@ export default function Capacity() {
               })}
               {chambers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                     {totalCount === 0 && !searchQuery && statusFilter === 'All' && !startDate && !endDate ? 'No chambers found. Click "New Chamber" to create one.' : 'No chambers match your search or filter.'}
                   </TableCell>
                 </TableRow>
@@ -339,6 +348,10 @@ export default function Capacity() {
           }}
         />
       </Paper>
+
+      <Box sx={{ mt: 4 }}>
+        <FloorPlanView />
+      </Box>
 
       {/* Add Chamber Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)}>
@@ -428,6 +441,36 @@ export default function Capacity() {
                       <MenuItem value="Warning">Warning</MenuItem>
                       <MenuItem value="Maintenance">Maintenance</MenuItem>
                     </TextField>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>Temperature</Typography>
+                    <TextField
+                      label="Target Temperature (°C)"
+                      type="number"
+                      fullWidth
+                      value={editingChamber.temperature_c ?? -2}
+                      onChange={e => setEditingChamber({...editingChamber, temperature_c: e.target.value})}
+                      sx={{ mb: 2 }}
+                      slotProps={{ htmlInput: { step: '0.1' } }}
+                    />
+                    <TextField
+                      label="Current Temperature (°C)"
+                      type="number"
+                      fullWidth
+                      value={editingChamber.current_temperature_c ?? ''}
+                      onChange={e => setEditingChamber({...editingChamber, current_temperature_c: e.target.value})}
+                      helperText="Live reading shown on Dashboard & floor plan"
+                      slotProps={{ htmlInput: { step: '0.1' } }}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>Zone</Typography>
+                    <TextField
+                      fullWidth
+                      label="Floor plan zone"
+                      value={editingChamber.zone || ''}
+                      onChange={e => setEditingChamber({...editingChamber, zone: e.target.value})}
+                    />
                   </Box>
                 </Stack>
 

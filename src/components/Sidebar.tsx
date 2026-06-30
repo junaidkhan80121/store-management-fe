@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import { Drawer, List, ListItem, ListItemIcon, ListItemText, Toolbar, Box, ListItemButton, useTheme, useMediaQuery, Typography, IconButton, Collapse } from '@mui/material';
-import { LayoutDashboard, Box as BoxIcon, Settings, Menu, Users, Leaf, Trees, ArrowDownToLine, ArrowUpFromLine, Activity, ChevronDown, ChevronRight, CheckSquare, Truck, Grid, Calendar, PackageSearch, PackageCheck, Send, FileText, LogOut } from 'lucide-react';
+import { LayoutDashboard, Box as BoxIcon, Settings, Menu, Users, Leaf, Trees, ArrowDownToLine, ArrowUpFromLine, Activity, ChevronDown, ChevronRight, CheckSquare, Truck, Grid, Calendar, PackageSearch, PackageCheck, Send, FileText, LogOut, Receipt } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
-
-const drawerWidth = 280;
-const miniDrawerWidth = 88;
+import { DRAWER_WIDTH, MINI_DRAWER_WIDTH } from '../constants/layout';
 
 interface SidebarProps {
   mobileOpen: boolean;
   handleDrawerToggle: () => void;
+  onDrawerOpen: () => void;
 }
 
-export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps) {
+export default function Sidebar({ mobileOpen, handleDrawerToggle, onDrawerOpen }: SidebarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
@@ -60,12 +59,24 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
     },
     { text: 'Transactions In Reports', icon: <Activity size={24} />, path: '/reports/inbound' },
     { text: 'Transactions Out Reports', icon: <Activity size={24} />, path: '/reports/outbound' },
+    { text: 'Invoices', icon: <Receipt size={24} />, path: '/invoices' },
     { text: 'Settings', icon: <Settings size={24} />, path: '/settings' },
   ];
 
   if (role === 'admin') {
     menuConfig.push({ text: 'Admin Panel', icon: <Users size={24} />, path: '/admin' });
   }
+
+  const isCompact = !mobileOpen && !isMobile;
+
+  const handleParentClick = (groupName: string) => {
+    if (isCompact) {
+      onDrawerOpen();
+      setOpenGroups((prev) => ({ ...prev, [groupName]: true }));
+      return;
+    }
+    toggleGroup(groupName);
+  };
 
   const renderNavItem = (item: any, depth = 0) => {
     const isParent = !!item.children;
@@ -77,12 +88,12 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
 
     return (
       <React.Fragment key={item.text}>
-        <ListItem disablePadding sx={{ mb: 0.5 }}>
+        <ListItem disablePadding sx={{ mb: 0.5, width: '100%', overflow: 'hidden' }}>
           <ListItemButton 
             selected={active || (isChildActive && !isOpen)}
             onClick={() => {
               if (isParent) {
-                toggleGroup(item.text);
+                handleParentClick(item.text);
               } else {
                 navigate(item.path);
                 if (isMobile) handleDrawerToggle();
@@ -90,9 +101,13 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
             }}
             sx={{
               borderRadius: 1,
-              pl: depth === 0 ? 2 : 4,
-              pr: 2,
+              width: '100%',
+              maxWidth: '100%',
+              pl: isCompact ? 0 : depth === 0 ? 2 : 4,
+              pr: isCompact ? 0 : 2,
               py: 1,
+              justifyContent: isCompact ? 'center' : 'flex-start',
+              minHeight: 48,
               ...(active && {
                 bgcolor: 'rgba(0, 167, 111, 0.08)',
                 color: 'primary.main',
@@ -102,7 +117,8 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
           >
             <ListItemIcon sx={{ 
               color: (active || isChildActive) ? 'primary.main' : 'text.secondary',
-              minWidth: 40
+              minWidth: isCompact ? 0 : 40,
+              justifyContent: 'center',
             }}>
               {item.icon || <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'currentColor', ml: 1 }} />}
             </ListItemIcon>
@@ -119,11 +135,12 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
                 }
               }} 
               sx={{ 
+                display: isCompact ? 'none' : 'block',
                 opacity: mobileOpen ? 1 : 0, 
                 transition: 'opacity 0.2s',
-                width: mobileOpen ? 'auto' : 0, 
                 m: 0,
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
               }}
             />
             
@@ -147,9 +164,25 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
   };
 
   const drawer = (
-    <div>
-      <Box sx={{ px: mobileOpen ? 2.5 : 0, py: 3, display: 'flex', alignItems: 'center', justifyContent: mobileOpen ? 'space-between' : 'center', transition: 'padding 0.2s' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', opacity: mobileOpen ? 1 : 0, width: mobileOpen ? 'auto' : 0, overflow: 'hidden', whiteSpace: 'nowrap', transition: 'opacity 0.2s, width 0.2s' }}>
+    <Box sx={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ 
+        px: isCompact ? 0 : mobileOpen ? 2.5 : 0, 
+        py: 3, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: isCompact ? 'center' : mobileOpen ? 'space-between' : 'center', 
+        transition: 'padding 0.2s',
+        flexShrink: 0,
+      }}>
+        <Box sx={{ 
+          display: isCompact ? 'none' : 'flex', 
+          alignItems: 'center', 
+          opacity: mobileOpen ? 1 : 0, 
+          width: mobileOpen ? 'auto' : 0, 
+          overflow: 'hidden', 
+          whiteSpace: 'nowrap', 
+          transition: 'opacity 0.2s, width 0.2s' 
+        }}>
           <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 1 }}>
             <span style={{ color: '#fff', fontWeight: 900, fontSize: 16 }}>C</span>
           </Box>
@@ -157,20 +190,27 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
             Cold Store
           </Typography>
         </Box>
-        <IconButton onClick={handleDrawerToggle} color="inherit">
+        <IconButton onClick={handleDrawerToggle} color="inherit" sx={{ flexShrink: 0 }}>
           <Menu size={20} />
         </IconButton>
       </Box>
-      <Box sx={{ overflow: 'auto', px: 2, pt: 1, pb: 4 }}>
-        <List>
+      <Box sx={{ 
+        flex: 1,
+        overflowX: 'hidden', 
+        overflowY: 'auto', 
+        px: isCompact ? 0.75 : 2, 
+        pt: 1, 
+        pb: 4,
+      }}>
+        <List disablePadding sx={{ width: '100%' }}>
           {menuConfig.map((item) => renderNavItem(item))}
         </List>
       </Box>
-    </div>
+    </Box>
   );
 
   return (
-    <Box component="nav" sx={{ width: { sm: mobileOpen ? drawerWidth : miniDrawerWidth }, flexShrink: { sm: 0 }, transition: 'width 0.3s' }}>
+    <Box component="nav" sx={{ width: { sm: mobileOpen ? DRAWER_WIDTH : MINI_DRAWER_WIDTH }, flexShrink: { sm: 0 }, transition: 'width 0.3s' }}>
       <Drawer
         variant="temporary"
         open={isMobile && mobileOpen}
@@ -178,7 +218,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', sm: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: DRAWER_WIDTH },
         }}
       >
         {drawer}
@@ -189,14 +229,15 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
           display: { xs: 'none', sm: 'block' },
           '& .MuiDrawer-paper': { 
             boxSizing: 'border-box', 
-            width: mobileOpen ? drawerWidth : miniDrawerWidth,
+            width: mobileOpen ? DRAWER_WIDTH : MINI_DRAWER_WIDTH,
             borderRight: '1px dashed rgba(145, 158, 171, 0.24)',
             bgcolor: 'background.default',
             transition: (theme) => theme.transitions.create('width', {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.enteringScreen,
             }),
-            overflowX: 'hidden'
+            overflowX: 'hidden',
+            overflowY: 'hidden',
           },
         }}
         open
