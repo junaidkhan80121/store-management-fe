@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Drawer, List, ListItem, ListItemIcon, ListItemText, Toolbar, Box, ListItemButton, useTheme, useMediaQuery, Typography, IconButton, Collapse } from '@mui/material';
-import { LayoutDashboard, Box as BoxIcon, Settings, Menu, Users, Leaf, Trees, ArrowDownToLine, ArrowUpFromLine, Activity, ChevronDown, ChevronRight, CheckSquare, Truck, Grid, Calendar, PackageSearch, PackageCheck, Send, FileText } from 'lucide-react';
+import { LayoutDashboard, Box as BoxIcon, Settings, Menu, Users, Leaf, Trees, ArrowDownToLine, ArrowUpFromLine, Activity, ChevronDown, ChevronRight, CheckSquare, Truck, Grid, Calendar, PackageSearch, PackageCheck, Send, FileText, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
@@ -55,6 +55,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle }: SidebarProps
         { text: 'Packing Draft', icon: <PackageCheck size={20} />, path: '/transactions-out/packing-draft' },
         { text: 'Packing Order', icon: <PackageCheck size={20} />, path: '/transactions-out/packing-order' },
         { text: 'Dispatch', icon: <Send size={20} />, path: '/transactions-out/dispatch' },
+        { text: 'Final OutWard', icon: <LogOut size={20} />, path: '/transactions-out/final-outward' },
       ]
     },
     { text: 'Transactions In Reports', icon: <Activity size={24} />, path: '/reports/inbound' },

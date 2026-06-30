@@ -1,0 +1,287 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, Button, TextField, MenuItem, Dialog, DialogTitle,
+  DialogContent, DialogActions, Alert, CircularProgress, Chip, InputAdornment,
+  Stack, TablePagination, Grid, Fade
+} from '@mui/material';
+import { Plus, Search, Send, Package, ShoppingCart } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { type RootState } from '../../store/store';
+
+const statusColors: Record<string, string> = {
+  DEMAND_DRAFT: '#FFAB00',
+  STORE_OUT: '#00B8D9',
+  PACKING_DRAFT: '#8E33FF',
+  PACKING: '#3366FF',
+  DISPATCHED: '#22C55E',
+  FINAL_OUTWARD: '#00A76F',
+};
+
+export default function DemandOrder() {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [sourceTransactions, setSourceTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [form, setForm] = useState({
+    transaction_in_id: '' as number | '',
+    crates_out: '' as number | '',
+    weight_out_kg: '' as number | '',
+    buyer_name: '',
+    buyer_contact: '',
+    destination: '',
+  });
+
+  const token = useSelector((state: RootState) => state.auth.token);
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+  const fetchTransactions = async () => {
+    try {
+      const params = new URLSearchParams({
+        skip: (page * rowsPerPage).toString(),
+        limit: rowsPerPage.toString(),
+        sort_by: 'created_at',
+        sort_order: 'desc',
+      });
+      if (searchQuery) params.append('search', searchQuery);
+
+      const res = await fetch(`${API}/api/transactions-out?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTransactions(data.items || []);
+        setTotalCount(data.total || 0);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSourceTransactions = async () => {
+    try {
+      const res = await fetch(`${API}/api/transactions-in?status=SLOTTED&limit=1000`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSourceTransactions(data.items || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => { fetchTransactions(); }, [token, page, rowsPerPage]);
+  useEffect(() => { fetchSourceTransactions(); }, [token]);
+  useEffect(() => { setPage(0); fetchTransactions(); }, [searchQuery]);
+
+  const handleSubmit = async () => {
+    if (!form.transaction_in_id) return;
+    setSubmitting(true);
+    setSubmitStatus(null);
+
+    try {
+      const res = await fetch(`${API}/api/transactions-out/demand-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          transaction_in_id: form.transaction_in_id,
+          crates_out: Number(form.crates_out) || 0,
+          weight_out_kg: Number(form.weight_out_kg) || 0,
+          buyer_name: form.buyer_name || null,
+          buyer_contact: form.buyer_contact || null,
+          destination: form.destination || null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create demand order');
+
+      setSubmitStatus({ type: 'success', message: 'Demand order created successfully!' });
+      setForm({ transaction_in_id: '', crates_out: '', weight_out_kg: '', buyer_name: '', buyer_contact: '', destination: '' });
+      setOpen(false);
+      fetchTransactions();
+    } catch (err: any) {
+      setSubmitStatus({ type: 'error', message: err.message || 'An error occurred' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Fade in timeout={500}>
+      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+        <Box sx={{ mb: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(255, 171, 0, 0.16)', mr: 2, display: 'flex' }}>
+              <ShoppingCart size={24} color="#FFAB00" />
+            </Box>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>Demand Orders</Typography>
+              <Typography variant="body2" color="text.secondary">Create and manage outbound demand orders</Typography>
+            </Box>
+          </Box>
+          <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => setOpen(true)}>
+            New Demand Order
+          </Button>
+        </Box>
+
+        {submitStatus && (
+          <Alert severity={submitStatus.type} sx={{ mb: 3 }} onClose={() => setSubmitStatus(null)}>
+            {submitStatus.message}
+          </Alert>
+        )}
+
+        <Paper sx={{ mb: 3, p: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Search by buyer, destination, vehicle..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={18} /></InputAdornment> } }}
+            sx={{ minWidth: 300 }}
+          />
+        </Paper>
+
+        <Paper sx={{ overflow: 'hidden' }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress /></Box>
+          ) : (
+            <>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>ID</TableCell>
+                      <TableCell>Source TXN</TableCell>
+                      <TableCell>Buyer</TableCell>
+                      <TableCell>Destination</TableCell>
+                      <TableCell>Crates</TableCell>
+                      <TableCell>Weight (kg)</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Created</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {transactions.map((txn) => (
+                      <TableRow key={txn.id} hover>
+                        <TableCell>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>#{txn.id}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={`TXN-${txn.transaction_in_id}`} size="small" variant="outlined" />
+                        </TableCell>
+                        <TableCell>{txn.buyer_name || '—'}</TableCell>
+                        <TableCell>{txn.destination || '—'}</TableCell>
+                        <TableCell>
+                          <Typography sx={{ fontFamily: '"JetBrains Mono", monospace' }}>{txn.crates_out}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography sx={{ fontFamily: '"JetBrains Mono", monospace' }}>{txn.weight_out_kg}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={txn.status.replace(/_/g, ' ')}
+                            size="small"
+                            sx={{
+                              bgcolor: `${statusColors[txn.status] || '#919EAB'}20`,
+                              color: statusColors[txn.status] || '#919EAB',
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" color="text.secondary">
+                            {new Date(txn.created_at).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {transactions.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                          <Package size={40} color="#919EAB" />
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            No demand orders found
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={totalCount}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={(_, p) => setPage(p)}
+                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+              />
+            </>
+          )}
+        </Paper>
+
+        {/* Create Dialog */}
+        <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>New Demand Order</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2.5} sx={{ mt: 1 }}>
+              <TextField
+                select
+                fullWidth
+                required
+                label="Source Inbound Transaction"
+                value={form.transaction_in_id}
+                onChange={(e) => setForm({ ...form, transaction_in_id: Number(e.target.value) })}
+              >
+                {sourceTransactions.map((t) => (
+                  <MenuItem key={t.id} value={t.id}>
+                    TXN-{t.id} — {t.item_type} — {t.crates_count} crates ({t.total_weight_kg} kg)
+                  </MenuItem>
+                ))}
+                {sourceTransactions.length === 0 && (
+                  <MenuItem disabled value="">No slotted transactions available</MenuItem>
+                )}
+              </TextField>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 6 }}>
+                  <TextField fullWidth required type="number" label="Crates Out" value={form.crates_out}
+                    onChange={(e) => setForm({ ...form, crates_out: e.target.value === '' ? '' : Number(e.target.value) })} />
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <TextField fullWidth required type="number" label="Weight (kg)" value={form.weight_out_kg}
+                    onChange={(e) => setForm({ ...form, weight_out_kg: e.target.value === '' ? '' : Number(e.target.value) })}
+                    slotProps={{ htmlInput: { step: '0.1' } }} />
+                </Grid>
+              </Grid>
+              <TextField fullWidth label="Buyer Name" value={form.buyer_name}
+                onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} />
+              <TextField fullWidth label="Buyer Contact" value={form.buyer_contact}
+                onChange={(e) => setForm({ ...form, buyer_contact: e.target.value })} />
+              <TextField fullWidth label="Destination" value={form.destination}
+                onChange={(e) => setForm({ ...form, destination: e.target.value })} />
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 0 }}>
+            <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
+            <Button onClick={handleSubmit} variant="contained" disabled={submitting || !form.transaction_in_id}
+              startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <Send size={16} />}>
+              {submitting ? 'Creating...' : 'Create Order'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </Fade>
+  );
+}

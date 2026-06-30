@@ -12,12 +12,24 @@ import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
 import GrowerGroups from './pages/GrowerGroups';
 import Growers from './pages/Growers';
+import GrowerReports from './pages/GrowerReports';
 import Preinward from './pages/transactions-in/Preinward';
 import Quality from './pages/transactions-in/Quality';
 import Dockyard from './pages/transactions-in/Dockyard';
 import Slotting from './pages/transactions-in/Slotting';
 
-import PlaceholderPage from './pages/PlaceholderPage';
+// Transactions Out
+import DispatchCalendar from './pages/transactions-out/Calendar';
+import DemandOrder from './pages/transactions-out/DemandOrder';
+import StoreOut from './pages/transactions-out/StoreOut';
+import PackingDraft from './pages/transactions-out/PackingDraft';
+import PackingOrder from './pages/transactions-out/PackingOrder';
+import Dispatch from './pages/transactions-out/Dispatch';
+import FinalOutward from './pages/transactions-out/FinalOutward';
+
+// Reports
+import InboundReports from './pages/reports/InboundReports';
+import OutboundReports from './pages/reports/OutboundReports';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -49,7 +61,7 @@ function App() {
               <Route path="/capacity" element={<Capacity />} />
               <Route path="/grower-groups" element={<GrowerGroups />} />
               <Route path="/growers" element={<Growers />} />
-              <Route path="/growers/reports" element={<PlaceholderPage title="Grower Reports" />} />
+              <Route path="/growers/reports" element={<GrowerReports />} />
               
               {/* Transactions In */}
               <Route path="/transactions-in/preinward" element={<Preinward />} />
@@ -58,16 +70,17 @@ function App() {
               <Route path="/transactions-in/slotting" element={<Slotting />} />
               
               {/* Transactions Out */}
-              <Route path="/transactions-out/calendar" element={<PlaceholderPage title="Dispatch Calendar" />} />
-              <Route path="/transactions-out/demand" element={<PlaceholderPage title="Demand Orders" />} />
-              <Route path="/transactions-out/store-out" element={<PlaceholderPage title="Store Out" />} />
-              <Route path="/transactions-out/packing-draft" element={<PlaceholderPage title="Packing Drafts" />} />
-              <Route path="/transactions-out/packing-order" element={<PlaceholderPage title="Packing Orders" />} />
-              <Route path="/transactions-out/dispatch" element={<PlaceholderPage title="Final Dispatch" />} />
+              <Route path="/transactions-out/calendar" element={<DispatchCalendar />} />
+              <Route path="/transactions-out/demand" element={<DemandOrder />} />
+              <Route path="/transactions-out/store-out" element={<StoreOut />} />
+              <Route path="/transactions-out/packing-draft" element={<PackingDraft />} />
+              <Route path="/transactions-out/packing-order" element={<PackingOrder />} />
+              <Route path="/transactions-out/dispatch" element={<Dispatch />} />
+              <Route path="/transactions-out/final-outward" element={<FinalOutward />} />
               
               {/* Reports */}
-              <Route path="/reports/inbound" element={<PlaceholderPage title="Inbound Ledger Audits" />} />
-              <Route path="/reports/outbound" element={<PlaceholderPage title="Outbound Settlement Audits" />} />
+              <Route path="/reports/inbound" element={<InboundReports />} />
+              <Route path="/reports/outbound" element={<OutboundReports />} />
 
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
