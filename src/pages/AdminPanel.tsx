@@ -8,6 +8,7 @@ import {
 import { Trash2, UserPlus, ShieldAlert, Power, PowerOff } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
 
 export default function AdminPanel() {
   const [users, setUsers] = useState<any[]>([]);
@@ -88,9 +89,9 @@ export default function AdminPanel() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
-      <Box sx={{ mb: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" sx={{ fontWeight: '700' }}>Admin Control Panel</Typography>
+    <Box sx={pageContainerSx}>
+      <Box sx={pageHeaderSx}>
+        <Typography sx={pageTitleSx}>Admin Control Panel</Typography>
         <Button 
           variant="contained" 
           startIcon={<UserPlus size={20} />}

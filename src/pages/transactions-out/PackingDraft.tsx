@@ -8,6 +8,7 @@ import {
 import { PackageCheck, ArrowRight, Package } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
 
 export default function PackingDraft() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -77,13 +78,13 @@ export default function PackingDraft() {
 
   return (
     <Fade in timeout={500}>
-      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+      <Box sx={pageContainerSx}>
         <Box sx={{ mb: 5, display: 'flex', alignItems: 'center' }}>
           <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(142, 51, 255, 0.16)', mr: 2, display: 'flex' }}>
             <PackageCheck size={24} color="#8E33FF" />
           </Box>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>Packing Drafts</Typography>
+            <Typography sx={pageTitleSx}>Packing Drafts</Typography>
             <Typography variant="body2" color="text.secondary">
               Create packing specifications for store-out items — {totalCount} awaiting
             </Typography>

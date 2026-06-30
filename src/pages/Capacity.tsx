@@ -11,6 +11,7 @@ import { type RootState } from '../store/store';
 import ChamberVisualizer from '../components/ChamberVisualizer';
 import FloorPlanView from '../components/FloorPlanView';
 import { useAppToast } from '../hooks/useAppToast';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
 
 export default function Capacity() {
   const [chambers, setChambers] = useState<any[]>([]);
@@ -166,7 +167,7 @@ export default function Capacity() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+    <Box sx={pageContainerSx}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 5, width: '100%' }}>
         <Typography variant="h4" sx={{ fontWeight: '700', flexGrow: 1 }}>
           Chamber Capacity

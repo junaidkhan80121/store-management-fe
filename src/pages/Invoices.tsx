@@ -5,10 +5,11 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Stack, TablePagination,
   Fade, MenuItem, InputAdornment, IconButton, Tooltip
 } from '@mui/material';
-import { Plus, Search, FileText, Download, Trash2, Receipt } from 'lucide-react';
+import { Plus, Search, FileText, Download, Trash2, Receipt, X } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
 import { useAppToast } from '../hooks/useAppToast';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
 
 const statusColors: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
   DRAFT: 'default',
@@ -16,6 +17,10 @@ const statusColors: Record<string, 'default' | 'success' | 'warning' | 'error' |
   PAID: 'success',
   CANCELLED: 'error',
 };
+
+type TaxLineForm = { name: string; rate_percent: string };
+
+const defaultTaxLines = (): TaxLineForm[] => [{ name: 'GST', rate_percent: '18' }];
 
 export default function Invoices() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -28,7 +33,8 @@ export default function Invoices() {
   const [totalCount, setTotalCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
-  const [form, setForm] = useState({ transaction_out_id: '' as number | '', tax_rate: '0', notes: '' });
+  const [form, setForm] = useState({ transaction_out_id: '' as number | '', notes: '' });
+  const [taxLines, setTaxLines] = useState<TaxLineForm[]>(defaultTaxLines);
 
   const token = useSelector((state: RootState) => state.auth.token);
   const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -79,12 +85,19 @@ export default function Invoices() {
     if (!form.transaction_out_id) return;
     setSubmitting(true);
     try {
+      const payloadTaxLines = taxLines
+        .filter((line) => line.name.trim())
+        .map((line) => ({
+          name: line.name.trim(),
+          rate_percent: Number(line.rate_percent) || 0,
+        }));
+
       const res = await fetch(`${API}/api/invoices`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           transaction_out_id: form.transaction_out_id,
-          tax_rate: Number(form.tax_rate) || 0,
+          tax_lines: payloadTaxLines.length > 0 ? payloadTaxLines : undefined,
           notes: form.notes || null,
         }),
       });
@@ -94,7 +107,8 @@ export default function Invoices() {
       }
       const created = await res.json();
       setOpen(false);
-      setForm({ transaction_out_id: '', tax_rate: '0', notes: '' });
+      setForm({ transaction_out_id: '', notes: '' });
+      setTaxLines(defaultTaxLines());
       fetchInvoices();
       showToast(`Invoice ${created.invoice_number} created`);
     } catch (err: unknown) {
@@ -142,17 +156,43 @@ export default function Invoices() {
   };
 
   const selectedOrder = eligibleOrders.find((o) => o.id === form.transaction_out_id);
+  const subtotal = selectedOrder?.stock_valuation || 0;
+
+  const computedTaxLines = taxLines
+    .filter((line) => line.name.trim())
+    .map((line) => {
+      const rate = Number(line.rate_percent) || 0;
+      return {
+        name: line.name.trim(),
+        rate,
+        amount: Math.round(subtotal * rate) / 100,
+      };
+    });
+  const computedTaxTotal = computedTaxLines.reduce((sum, line) => sum + line.amount, 0);
+  const computedGrandTotal = subtotal + computedTaxTotal;
+
+  const updateTaxLine = (index: number, field: keyof TaxLineForm, value: string) => {
+    setTaxLines((prev) => prev.map((line, i) => (i === index ? { ...line, [field]: value } : line)));
+  };
+
+  const addTaxLine = () => {
+    setTaxLines((prev) => [...prev, { name: '', rate_percent: '' }]);
+  };
+
+  const removeTaxLine = (index: number) => {
+    setTaxLines((prev) => (prev.length <= 1 ? [{ name: '', rate_percent: '' }] : prev.filter((_, i) => i !== index)));
+  };
 
   return (
     <Fade in timeout={500}>
-      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
-        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={pageContainerSx}>
+        <Box sx={pageHeaderSx}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(0, 167, 111, 0.16)', mr: 2, display: 'flex' }}>
               <Receipt size={24} color="#00A76F" />
             </Box>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>Invoices</Typography>
+              <Typography sx={pageTitleSx}>Invoices</Typography>
               <Typography variant="body2" color="text.secondary">Create and download PDF invoices for outbound orders</Typography>
             </Box>
           </Box>
@@ -275,17 +315,68 @@ export default function Invoices() {
               {selectedOrder && (
                 <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover' }}>
                   <Typography variant="body2">{selectedOrder.crates_out} crates · {selectedOrder.weight_out_kg} kg</Typography>
-                  <Typography variant="body2">Valuation: ₹ {(selectedOrder.stock_valuation || 0).toLocaleString()}</Typography>
+                  <Typography variant="body2">Subtotal: ₹ {subtotal.toLocaleString()}</Typography>
                 </Paper>
               )}
-              <TextField
-                fullWidth
-                type="number"
-                label="Tax Rate (%)"
-                value={form.tax_rate}
-                onChange={(e) => setForm({ ...form, tax_rate: e.target.value })}
-                slotProps={{ htmlInput: { min: 0, step: '0.1' } }}
-              />
+
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Taxes (manual)</Typography>
+                  <Button size="small" startIcon={<Plus size={16} />} onClick={addTaxLine}>
+                    Add tax
+                  </Button>
+                </Box>
+                <Stack spacing={1.5}>
+                  {taxLines.map((line, index) => (
+                    <Box key={index} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <TextField
+                        size="small"
+                        label="Tax type"
+                        placeholder="e.g. CGST, SGST, Service"
+                        value={line.name}
+                        onChange={(e) => updateTaxLine(index, 'name', e.target.value)}
+                        sx={{ flex: 1.4 }}
+                      />
+                      <TextField
+                        size="small"
+                        type="number"
+                        label="Rate (%)"
+                        value={line.rate_percent}
+                        onChange={(e) => updateTaxLine(index, 'rate_percent', e.target.value)}
+                        slotProps={{ htmlInput: { min: 0, step: '0.1' } }}
+                        sx={{ flex: 0.8 }}
+                      />
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => removeTaxLine(index)}
+                        sx={{ mt: 0.5 }}
+                        aria-label="Remove tax line"
+                      >
+                        <X size={18} />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Stack>
+                {selectedOrder && computedTaxLines.length > 0 && (
+                  <Paper variant="outlined" sx={{ p: 2, mt: 2, bgcolor: 'background.default' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                      Preview
+                    </Typography>
+                    {computedTaxLines.map((line, i) => (
+                      <Box key={`${line.name}-${i}`} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                        <Typography variant="body2">{line.name} ({line.rate}%)</Typography>
+                        <Typography variant="body2">₹ {line.amount.toLocaleString()}</Typography>
+                      </Box>
+                    ))}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, pt: 1, borderTop: 1, borderColor: 'divider' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Grand Total</Typography>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>₹ {computedGrandTotal.toLocaleString()}</Typography>
+                    </Box>
+                  </Paper>
+                )}
+              </Box>
+
               <TextField
                 fullWidth
                 multiline

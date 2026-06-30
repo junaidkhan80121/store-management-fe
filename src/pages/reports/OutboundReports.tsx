@@ -7,6 +7,7 @@ import {
 import { ArrowUpFromLine, Search, Package, TrendingUp, CheckCircle2, Activity, Truck } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
 
 const statusColors: Record<string, string> = {
   DEMAND_DRAFT: '#FFAB00',
@@ -83,13 +84,13 @@ export default function OutboundReports() {
 
   return (
     <Fade in timeout={500}>
-      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+      <Box sx={pageContainerSx}>
         <Box sx={{ mb: 5, display: 'flex', alignItems: 'center' }}>
           <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(0, 167, 111, 0.16)', mr: 2, display: 'flex' }}>
             <Activity size={24} color="#00A76F" />
           </Box>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>Outbound Settlement Audits</Typography>
+            <Typography sx={pageTitleSx}>Outbound Settlement Audits</Typography>
             <Typography variant="body2" color="text.secondary">Transaction out reports with pipeline status tracking</Typography>
           </Box>
         </Box>

@@ -8,6 +8,7 @@ import {
 import { Send, Truck, ArrowRight, Package } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
 
 export default function Dispatch() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -74,13 +75,13 @@ export default function Dispatch() {
 
   return (
     <Fade in timeout={500}>
-      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+      <Box sx={pageContainerSx}>
         <Box sx={{ mb: 5, display: 'flex', alignItems: 'center' }}>
           <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(34, 197, 94, 0.16)', mr: 2, display: 'flex' }}>
             <Truck size={24} color="#22C55E" />
           </Box>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>Dispatch</Typography>
+            <Typography sx={pageTitleSx}>Dispatch</Typography>
             <Typography variant="body2" color="text.secondary">
               Dispatch packed orders to destinations — {totalCount} ready for dispatch
             </Typography>

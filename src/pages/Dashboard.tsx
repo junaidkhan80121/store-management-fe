@@ -6,6 +6,7 @@ import {
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
 import { TrendingUp, CheckCircle2, PieChart, Package, Activity, Truck, Thermometer } from 'lucide-react';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
@@ -30,8 +31,8 @@ export default function Dashboard() {
   const capacityPercent = stats?.capacity_used_percent ?? 0;
 
   return (
-    <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>Central Monitoring & Fleet Telemetry</Typography>
+    <Box sx={pageContainerSx}>
+      <Typography sx={{ ...pageTitleSx, mb: { xs: 2, sm: 4 } }}>Central Monitoring & Fleet Telemetry</Typography>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {[

@@ -36,8 +36,16 @@ export const getDesignTokens = (mode: PaletteMode) => ({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        html: {
+          overflowX: 'hidden',
+        },
         body: {
           backgroundColor: mode === 'light' ? '#F9FAFB' : '#161C24',
+          overflowX: 'hidden',
+        },
+        '#root': {
+          width: '100%',
+          minHeight: '100%',
         },
       },
     },
@@ -110,6 +118,7 @@ export const getDesignTokens = (mode: PaletteMode) => ({
       styleOverrides: {
         root: {
           borderBottom: '1px dashed rgba(145, 158, 171, 0.2)',
+          whiteSpace: 'nowrap',
         },
         head: {
           color: '#637381',
@@ -123,6 +132,64 @@ export const getDesignTokens = (mode: PaletteMode) => ({
             borderBottomRightRadius: 8,
           },
         },
+      },
+    },
+    MuiTableContainer: {
+      styleOverrides: {
+        root: {
+          width: '100%',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        },
+      },
+    },
+    MuiTablePagination: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          [theme.breakpoints.down('sm')]: {
+            flexWrap: 'wrap',
+          },
+        }),
+        toolbar: ({ theme }) => ({
+          [theme.breakpoints.down('sm')]: {
+            paddingLeft: theme.spacing(1),
+            paddingRight: theme.spacing(1),
+            gap: theme.spacing(1),
+          },
+        }),
+        selectLabel: ({ theme }) => ({
+          [theme.breakpoints.down('sm')]: {
+            margin: 0,
+          },
+        }),
+        displayedRows: ({ theme }) => ({
+          [theme.breakpoints.down('sm')]: {
+            margin: 0,
+          },
+        }),
+      },
+    },
+    MuiDialog: {
+      defaultProps: {
+        fullWidth: true,
+      },
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          [theme.breakpoints.down('sm')]: {
+            margin: theme.spacing(1),
+            width: `calc(100% - ${theme.spacing(2)})`,
+            maxHeight: `calc(100% - ${theme.spacing(2)})`,
+          },
+        }),
+      },
+    },
+    MuiToolbar: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          [theme.breakpoints.down('sm')]: {
+            minHeight: 56,
+          },
+        }),
       },
     },
   },

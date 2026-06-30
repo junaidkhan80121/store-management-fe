@@ -9,6 +9,7 @@ import { Plus, Search, Trash2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
 import { useAppToast } from '../hooks/useAppToast';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
 
 export default function Growers() {
   const [growers, setGrowers] = useState<any[]>([]);
@@ -156,9 +157,9 @@ export default function Growers() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
-      <Box sx={{ mb: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>Individual Growers</Typography>
+    <Box sx={pageContainerSx}>
+      <Box sx={pageHeaderSx}>
+        <Typography sx={pageTitleSx}>Individual Growers</Typography>
         <Button 
           variant="contained" 
           startIcon={<Plus size={20} />}

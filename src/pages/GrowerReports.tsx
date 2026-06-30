@@ -7,6 +7,7 @@ import {
 import { Users, Search, Package, TrendingUp, FileText } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
 
 export default function GrowerReports() {
   const [data, setData] = useState<any[]>([]);
@@ -82,13 +83,13 @@ export default function GrowerReports() {
 
   return (
     <Fade in timeout={500}>
-      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+      <Box sx={pageContainerSx}>
         <Box sx={{ mb: 5, display: 'flex', alignItems: 'center' }}>
           <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(0, 167, 111, 0.16)', mr: 2, display: 'flex' }}>
             <Users size={24} color="#00A76F" />
           </Box>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>Grower Reports</Typography>
+            <Typography sx={pageTitleSx}>Grower Reports</Typography>
             <Typography variant="body2" color="text.secondary">Contractual metrics and grower performance analytics</Typography>
           </Box>
         </Box>

@@ -8,6 +8,7 @@ import {
 import { Plus, Search, Send, Package, ShoppingCart } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
 
 const statusColors: Record<string, string> = {
   DEMAND_DRAFT: '#FFAB00',
@@ -118,14 +119,14 @@ export default function DemandOrder() {
 
   return (
     <Fade in timeout={500}>
-      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
-        <Box sx={{ mb: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={pageContainerSx}>
+        <Box sx={pageHeaderSx}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(255, 171, 0, 0.16)', mr: 2, display: 'flex' }}>
               <ShoppingCart size={24} color="#FFAB00" />
             </Box>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>Demand Orders</Typography>
+              <Typography sx={pageTitleSx}>Demand Orders</Typography>
               <Typography variant="body2" color="text.secondary">Create and manage outbound demand orders</Typography>
             </Box>
           </Box>

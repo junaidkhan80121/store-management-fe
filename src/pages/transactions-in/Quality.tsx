@@ -3,6 +3,7 @@ import { Box, Typography, Paper, Fade, Button, CircularProgress, Chip, Table, Ta
 import { CheckSquare, CheckCircle, XCircle } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
+import { pageContainerSx } from '../../constants/responsive';
 
 interface Transaction {
   id: number;
@@ -96,7 +97,7 @@ export default function Quality() {
 
   return (
     <Fade in={true} timeout={500}>
-      <Box sx={{ p: 3, maxWidth: 1100, margin: '0 auto' }}>
+      <Box sx={pageContainerSx}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.main', color: 'warning.contrastText', mr: 2, display: 'flex' }}>
             <CheckSquare size={24} />

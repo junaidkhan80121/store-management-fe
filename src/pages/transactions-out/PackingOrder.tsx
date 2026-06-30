@@ -7,6 +7,7 @@ import {
 import { PackageCheck, ArrowRight, Package } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
 
 export default function PackingOrder() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -65,13 +66,13 @@ export default function PackingOrder() {
 
   return (
     <Fade in timeout={500}>
-      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+      <Box sx={pageContainerSx}>
         <Box sx={{ mb: 5, display: 'flex', alignItems: 'center' }}>
           <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(51, 102, 255, 0.16)', mr: 2, display: 'flex' }}>
             <PackageCheck size={24} color="#3366FF" />
           </Box>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>Packing Orders</Typography>
+            <Typography sx={pageTitleSx}>Packing Orders</Typography>
             <Typography variant="body2" color="text.secondary">
               Confirm packing drafts into active orders — {totalCount} pending confirmation
             </Typography>

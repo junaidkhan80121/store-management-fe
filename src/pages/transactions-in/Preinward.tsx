@@ -3,6 +3,7 @@ import { Box, Typography, Paper, Fade, TextField, MenuItem, Button, Alert, Circu
 import { FileText, Send } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
+import { pageContainerSx } from '../../constants/responsive';
 
 interface Grower {
   id: number;
@@ -93,7 +94,7 @@ export default function Preinward() {
 
   return (
     <Fade in={true} timeout={500}>
-      <Box sx={{ p: 3, maxWidth: 900, margin: '0 auto' }}>
+      <Box sx={pageContainerSx}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.main', color: 'primary.contrastText', mr: 2, display: 'flex' }}>
             <FileText size={24} />

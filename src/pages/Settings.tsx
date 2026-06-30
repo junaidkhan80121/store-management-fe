@@ -6,6 +6,7 @@ import {
 import { useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
 import { User, KeyRound, Bell } from 'lucide-react';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../constants/responsive';
 
 export default function Settings() {
   const [profile, setProfile] = useState<{ email: string }>({ email: '' });
@@ -71,7 +72,7 @@ export default function Settings() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+    <Box sx={pageContainerSx}>
       <Typography variant="h4" sx={{ fontWeight: '700' }} gutterBottom>
         Settings
       </Typography>

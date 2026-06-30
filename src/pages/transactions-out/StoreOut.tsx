@@ -7,6 +7,7 @@ import {
 import { PackageSearch, ArrowRight, Package } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store/store';
+import { pageContainerSx, pageHeaderSx, pageTitleSx } from '../../constants/responsive';
 
 export default function StoreOut() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -65,13 +66,13 @@ export default function StoreOut() {
 
   return (
     <Fade in timeout={500}>
-      <Box sx={{ maxWidth: 1440, mx: 'auto', pt: 2, pb: 4 }}>
+      <Box sx={pageContainerSx}>
         <Box sx={{ mb: 5, display: 'flex', alignItems: 'center' }}>
           <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(0, 184, 217, 0.16)', mr: 2, display: 'flex' }}>
             <PackageSearch size={24} color="#00B8D9" />
           </Box>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>Store Out</Typography>
+            <Typography sx={pageTitleSx}>Store Out</Typography>
             <Typography variant="body2" color="text.secondary">
               Process demand orders for store removal — {totalCount} pending
             </Typography>

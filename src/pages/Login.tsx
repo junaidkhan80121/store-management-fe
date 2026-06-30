@@ -56,20 +56,22 @@ export default function Login() {
     <Box
       sx={{
         display: 'flex',
-        height: '100vh',
+        minHeight: '100vh',
         alignItems: 'center',
         justifyContent: 'center',
+        px: { xs: 2, sm: 3 },
+        py: { xs: 2, sm: 0 },
       }}
     >
       <IconButton 
-        sx={{ position: 'absolute', top: 16, right: 16 }} 
+        sx={{ position: 'absolute', top: { xs: 12, sm: 16 }, right: { xs: 12, sm: 16 } }} 
         onClick={toggleColorMode} 
         color="inherit"
       >
         {mode === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
       </IconButton>
-      <Paper sx={{ p: 5, width: '100%', maxWidth: 480 }}>
-        <Typography variant="h4" gutterBottom align="center" sx={{ mb: 4, fontWeight: '700' }}>
+      <Paper sx={{ p: { xs: 3, sm: 5 }, width: '100%', maxWidth: 480 }}>
+        <Typography gutterBottom align="center" sx={{ mb: 4, fontWeight: 700, fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           Sign in to Cold Store
         </Typography>
         
